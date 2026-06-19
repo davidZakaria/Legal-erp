@@ -32,3 +32,19 @@ export function canLogSessionOutcome(
 export function isManagerOrAbove(role: Role): boolean {
   return role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER;
 }
+
+export function canCreateLawsuit(role: Role): boolean {
+  return isManagerOrAbove(role);
+}
+
+export function canManageGafiTasks(role: Role): boolean {
+  return isManagerOrAbove(role);
+}
+
+export function canCreateContract(role: Role): boolean {
+  return (
+    role === Role.SUPER_ADMIN ||
+    role === Role.LEGAL_MANAGER ||
+    role === Role.LAWYER
+  );
+}

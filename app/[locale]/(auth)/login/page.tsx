@@ -7,6 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,11 +57,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>{tCommon("appName")}</CardTitle>
-          <CardDescription>{t("welcome")}</CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md border-slate-200 shadow-lg">
+        <CardHeader className="space-y-4 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-white">
+            <Building2 className="h-7 w-7" />
+          </div>
+          <div>
+            <CardTitle className="text-xl text-slate-900">{tCommon("appName")}</CardTitle>
+            <CardDescription className="mt-2">{t("welcome")}</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -70,6 +76,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
+                className="h-10"
                 {...register("email")}
               />
               {errors.email && (
@@ -82,14 +89,23 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
+                className="h-10"
                 {...register("password")}
               />
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
-            {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>
+            {error && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <Button
+              type="submit"
+              className="h-10 w-full bg-slate-900 hover:bg-slate-800"
+              disabled={loading}
+            >
               {loading ? tCommon("loading") : t("loginButton")}
             </Button>
           </form>

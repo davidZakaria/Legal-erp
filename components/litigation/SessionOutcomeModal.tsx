@@ -6,6 +6,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
+import { Gavel, CalendarIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logSessionOutcome } from "@/app/actions/logSessionOutcome";
 import { useRouter } from "@/i18n/navigation";
@@ -92,10 +92,17 @@ export function SessionOutcomeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg border-slate-200">
         <DialogHeader>
-          <DialogTitle>{t("logOutcome")}</DialogTitle>
-          <DialogDescription>{t("sessionOutcome")}</DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+              <Gavel className="h-5 w-5" />
+            </div>
+            <div className="text-start">
+              <DialogTitle className="text-slate-900">{t("logOutcome")}</DialogTitle>
+              <DialogDescription>{t("sessionOutcomeDescription")}</DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -104,6 +111,8 @@ export function SessionOutcomeModal({
               id="sessionOutcome"
               {...register("sessionOutcome")}
               rows={4}
+              className="resize-none"
+              placeholder={t("sessionOutcomePlaceholder")}
             />
             {errors.sessionOutcome && (
               <p className="text-sm text-destructive">
@@ -156,7 +165,7 @@ export function SessionOutcomeModal({
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
             <Button
               type="button"
               variant="outline"
@@ -164,7 +173,7 @@ export function SessionOutcomeModal({
             >
               {tCommon("cancel")}
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="bg-slate-900 hover:bg-slate-800">
               {submitting ? tCommon("loading") : tCommon("save")}
             </Button>
           </div>

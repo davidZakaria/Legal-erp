@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,8 +9,10 @@ import {
 } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { addDays, isBefore } from "date-fns";
+import { AlertTriangle, Download, Radar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { LegalBadge } from "@/lib/legal-labels";
 import { cn } from "@/lib/utils";
 
 export type ContractRow = {
@@ -44,23 +46,27 @@ function isExpiringSoon(dateStr: string): boolean {
 export function ContractsDataTable({ data }: { data: ContractRow[] }) {
   const t = useTranslations("contracts");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
 
   const columns = [
     columnHelper.accessor("contractorName", {
       header: () => t("contractor"),
+      cell: (info) => <span className="font-medium text-slate-900">{info.getValue()}</span>,
     }),
     columnHelper.accessor("projectName", {
       header: () => t("project"),
       cell: (info) => (
-        <span>
-          {info.getValue()} ({info.row.original.projectLocation})
+        <span className="text-slate-700">
+          {info.getValue()} <span className="text-slate-400">({info.row.original.projectLocation})</span>
         </span>
       ),
     }),
     columnHelper.accessor("totalValue", {
       header: () => t("totalValue"),
       cell: (info) => (
-        <span>{Number(info.getValue()).toLocaleString()} EGP</span>
+        <span className="font-semibold text-slate-900">
+          {Number(info.getValue()).toLocaleString()} EGP
+        </span>
       ),
     }),
     columnHelper.accessor("guaranteeExpiryDate", {
@@ -69,9 +75,17 @@ export function ContractsDataTable({ data }: { data: ContractRow[] }) {
         const expiring = isExpiringSoon(info.getValue());
         return (
           <div className="flex items-center gap-2">
-            <span>{format(new Date(info.getValue()), "yyyy-MM-dd")}</span>
+            <span className={cn(expiring && "font-medium text-destructive")}>
+              {format(new Date(info.getValue()), "yyyy-MM-dd")}
+            </span>
             {expiring && (
-              <Badge variant="destructive">{tCommon("expiringSoon")}</Badge>
+              <Badge
+                variant="destructive"
+                className="animate-pulse gap-1"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {tCommon("expiringSoon")}
+              </Badge>
             )}
           </div>
         );
@@ -79,14 +93,17 @@ export function ContractsDataTable({ data }: { data: ContractRow[] }) {
     }),
     columnHelper.accessor("status", {
       header: () => tCommon("status"),
+      cell: (info) => (
+        <LegalBadge category="contractStatus" value={info.getValue()} locale={locale} />
+      ),
     }),
     columnHelper.display({
       id: "actions",
       header: () => tCommon("actions"),
       cell: (info) => (
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className="gap-2" asChild>
           <a href={`/api/contracts/${info.row.original.id}/download`}>
-            <Download className="me-1 h-4 w-4" />
+            <Download className="h-4 w-4" />
             {tCommon("download")}
           </a>
         </Button>
@@ -101,16 +118,18 @@ export function ContractsDataTable({ data }: { data: ContractRow[] }) {
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="h-3 w-3 rounded-full bg-destructive" />
-        <span className="text-sm text-muted-foreground">{t("guaranteeRadar")}</span>
-      </div>
-      <div className="rounded-md border">
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader className="border-b border-slate-100 bg-white">
+        <CardTitle className="flex items-center gap-2 text-base text-slate-700">
+          <Radar className="h-4 w-4 text-destructive" />
+          {t("guaranteeRadar")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-slate-50/80 hover:bg-slate-50/80">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -126,7 +145,10 @@ export function ContractsDataTable({ data }: { data: ContractRow[] }) {
                 return (
                   <TableRow
                     key={row.id}
-                    className={cn(expiring && "bg-destructive/10")}
+                    className={cn(
+                      "bg-white",
+                      expiring && "bg-destructive/5 hover:bg-destructive/10"
+                    )}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
@@ -138,14 +160,14 @@ export function ContractsDataTable({ data }: { data: ContractRow[] }) {
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
+                <TableCell colSpan={columns.length} className="py-8 text-center text-slate-500">
                   {tCommon("noData")}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

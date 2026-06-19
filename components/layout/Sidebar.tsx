@@ -5,34 +5,26 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  FileText,
+  FileSignature,
   Building2,
   Scale,
-  Shield,
+  ShieldAlert,
   ClipboardList,
 } from "lucide-react";
-import { LanguageSwitcher } from "./LanguageSwitcher";
-import { SignOutButton } from "./SignOutButton";
 import { Role } from "@prisma/client";
 
-// Use logical properties only (ms-, me-, ps-, pe-, text-start, border-e) for RTL/LTR flip.
+// Logical properties only (ms-, me-, ps-, pe-, text-start, border-s) for RTL/LTR flip.
 
 const navItems = [
   { href: "/", labelKey: "dashboard", icon: LayoutDashboard, roles: "all" },
-  { href: "/contracts", labelKey: "contracts", icon: FileText, roles: "all" },
+  { href: "/contracts", labelKey: "contracts", icon: FileSignature, roles: "all" },
   { href: "/gafi", labelKey: "gafi", icon: Building2, roles: "all" },
   { href: "/litigation", labelKey: "litigation", icon: Scale, roles: "all" },
-  { href: "/prosecutions", labelKey: "prosecutions", icon: Shield, roles: "all" },
+  { href: "/prosecutions", labelKey: "prosecutions", icon: ShieldAlert, roles: "all" },
   { href: "/audit-logs", labelKey: "auditLogs", icon: ClipboardList, roles: "admin" },
 ] as const;
 
-export function Sidebar({
-  userName,
-  userRole,
-}: {
-  userName: string;
-  userRole: Role;
-}) {
+export function Sidebar({ userRole }: { userRole: Role }) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const pathname = usePathname();
@@ -41,14 +33,14 @@ export function Sidebar({
     userRole === Role.SUPER_ADMIN || userRole === Role.LEGAL_MANAGER;
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-e bg-card">
-      <div className="flex flex-col gap-1 border-b p-4">
-        <h1 className="text-start text-sm font-bold leading-tight text-primary">
-          {tCommon("appName")}
-        </h1>
-        <p className="text-start text-xs text-muted-foreground">
+    <aside className="flex h-screen w-64 shrink-0 flex-col border-s border-slate-800 bg-slate-900 text-slate-100">
+      <div className="border-b border-slate-800 p-5">
+        <p className="text-start text-xs font-medium uppercase tracking-wider text-slate-400">
           {tCommon("company")}
         </p>
+        <h2 className="mt-1 text-start text-sm font-bold leading-snug text-white">
+          {tCommon("appName")}
+        </h2>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">
@@ -65,10 +57,10 @@ export function Sidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors text-start",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all text-start",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent"
+                  ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
+                  : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -78,12 +70,10 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="space-y-3 border-t p-4">
-        <p className="text-start text-sm font-medium">{userName}</p>
-        <div className="flex items-center gap-2">
-          <LanguageSwitcher />
-          <SignOutButton />
-        </div>
+      <div className="border-t border-slate-800 p-4">
+        <p className="text-start text-xs text-slate-500">
+          New Jersey Developments © 2026
+        </p>
       </div>
     </aside>
   );

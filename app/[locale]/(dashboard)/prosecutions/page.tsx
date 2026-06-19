@@ -1,5 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
+import { ShieldAlert } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { ProsecutionsGrouped } from "@/components/prosecutions/ProsecutionsGrouped";
 
 export default async function ProsecutionsPage() {
@@ -37,8 +39,8 @@ export default async function ProsecutionsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-start">{t("title")}</h1>
+    <div>
+      <PageHeader title={t("title")} icon={ShieldAlert} />
       <ProsecutionsGrouped grouped={grouped} />
     </div>
   );

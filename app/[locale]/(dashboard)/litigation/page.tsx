@@ -1,17 +1,31 @@
 import { getTranslations } from "next-intl/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canCreateLawsuit } from "@/lib/rbac";
+import { Role } from "@prisma/client";
+import { Scale } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { LitigationView } from "@/components/litigation/LitigationView";
+import { CreateLawsuitDialog } from "@/components/litigation/CreateLawsuitDialog";
 
 export default async function LitigationPage() {
   const t = await getTranslations("litigation");
+  const session = await auth();
 
-  const lawsuits = await prisma.lawsuit.findMany({
-    include: {
-      assignedLawyer: true,
-      courtSessions: { orderBy: { sessionDate: "asc" } },
-    },
-    orderBy: { year: "desc" },
-  });
+  const [lawsuits, lawyers] = await Promise.all([
+    prisma.lawsuit.findMany({
+      include: {
+        assignedLawyer: true,
+        courtSessions: { orderBy: { sessionDate: "asc" } },
+      },
+      orderBy: { year: "desc" },
+    }),
+    prisma.user.findMany({
+      where: { role: Role.LAWYER },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   const data = lawsuits.map((l) => ({
     id: l.id,
@@ -29,9 +43,19 @@ export default async function LitigationPage() {
     })),
   }));
 
+  const canCreate = session?.user
+    ? canCreateLawsuit(session.user.role)
+    : false;
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-start">{t("title")}</h1>
+    <div>
+      <PageHeader
+        title={t("title")}
+        icon={Scale}
+        action={
+          <CreateLawsuitDialog lawyers={lawyers} canCreate={canCreate} />
+        }
+      />
       <LitigationView lawsuits={data} />
     </div>
   );

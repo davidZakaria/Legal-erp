@@ -1,4 +1,5 @@
 import EmbeddedPostgres from "embedded-postgres";
+import fs from "fs";
 import path from "path";
 
 const DATA_DIR = path.join(process.cwd(), "data", "pg");
@@ -17,8 +18,13 @@ async function main() {
     initdbFlags: ["--encoding=UTF8", "--locale=C"],
   });
 
-  console.log("Initializing embedded PostgreSQL...");
-  await pg.initialise();
+  const pgVersionFile = path.join(DATA_DIR, "PG_VERSION");
+  if (!fs.existsSync(pgVersionFile)) {
+    console.log("Initializing embedded PostgreSQL...");
+    await pg.initialise();
+  } else {
+    console.log("Using existing PostgreSQL data directory...");
+  }
 
   console.log("Starting PostgreSQL on port", DB_PORT);
   await pg.start();

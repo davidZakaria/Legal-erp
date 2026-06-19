@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canViewAuditLogs } from "@/lib/rbac";
 import { format } from "date-fns";
+import { ClipboardList } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export default async function AuditLogsPage() {
   const t = await getTranslations("auditLogs");
@@ -20,8 +22,8 @@ export default async function AuditLogsPage() {
 
   if (!session?.user || !canViewAuditLogs(session.user.role)) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <p className="text-destructive text-lg">{tCommon("accessDenied")}</p>
+      <div className="flex items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 p-12">
+        <p className="text-lg font-medium text-destructive">{tCommon("accessDenied")}</p>
       </div>
     );
   }
@@ -33,16 +35,13 @@ export default async function AuditLogsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-start">{t("title")}</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("title")}</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div>
+      <PageHeader title={t("title")} icon={ClipboardList} />
+      <Card className="overflow-hidden border-slate-200 shadow-sm">
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                 <TableHead>{t("timestamp")}</TableHead>
                 <TableHead>{t("user")}</TableHead>
                 <TableHead>{t("action")}</TableHead>
@@ -52,14 +51,18 @@ export default async function AuditLogsPage() {
             </TableHeader>
             <TableBody>
               {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell>
+                <TableRow key={log.id} className="bg-white">
+                  <TableCell className="text-slate-600">
                     {format(log.timestamp, "yyyy-MM-dd HH:mm:ss")}
                   </TableCell>
-                  <TableCell>{log.user.name}</TableCell>
-                  <TableCell>{log.action}</TableCell>
+                  <TableCell className="font-medium text-slate-900">{log.user.name}</TableCell>
+                  <TableCell>
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+                      {log.action}
+                    </span>
+                  </TableCell>
                   <TableCell>{log.entityName}</TableCell>
-                  <TableCell className="font-mono text-xs">{log.entityId}</TableCell>
+                  <TableCell className="font-mono text-xs text-slate-500">{log.entityId}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

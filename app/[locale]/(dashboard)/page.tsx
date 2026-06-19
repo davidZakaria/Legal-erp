@@ -2,7 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
+import { AlertTriangle, CalendarClock, LayoutDashboard, ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
@@ -25,36 +27,56 @@ export default async function DashboardPage() {
     prisma.prosecution.count(),
   ]);
 
+  const stats = [
+    {
+      title: t("contractsExpiring"),
+      value: expiringContracts,
+      icon: AlertTriangle,
+      accent: "text-destructive",
+      bg: "bg-destructive/10",
+    },
+    {
+      title: t("sessionsTomorrow"),
+      value: sessionsTomorrow,
+      icon: CalendarClock,
+      accent: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      title: t("openProsecutions"),
+      value: prosecutions,
+      icon: ShieldAlert,
+      accent: "text-slate-900",
+      bg: "bg-slate-100",
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-start">
-        {t("welcome", { name: session?.user?.name ?? "" })}
-      </h1>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("contractsExpiring")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-destructive">{expiringContracts}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("sessionsTomorrow")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-primary">{sessionsTomorrow}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("openProsecutions")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{prosecutions}</p>
-          </CardContent>
-        </Card>
+    <div>
+      <PageHeader
+        title={t("welcome", { name: session?.user?.name ?? "" })}
+        description={t("title")}
+        icon={LayoutDashboard}
+      />
+      <div className="grid gap-5 md:grid-cols-3">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title} className="border-slate-200 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  {stat.title}
+                </CardTitle>
+                <div className={`rounded-lg p-2 ${stat.bg}`}>
+                  <Icon className={`h-4 w-4 ${stat.accent}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-3xl font-bold ${stat.accent}`}>{stat.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

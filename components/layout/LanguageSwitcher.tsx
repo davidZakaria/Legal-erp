@@ -25,9 +25,9 @@ export function LanguageSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2 border-slate-200">
           <Languages className="h-4 w-4" />
-          {t("language")}
+          <span className="hidden sm:inline">{t("language")}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -35,7 +35,7 @@ export function LanguageSwitcher() {
           <DropdownMenuItem
             key={loc}
             onClick={() => switchLocale(loc)}
-            className={locale === loc ? "bg-accent" : ""}
+            className={locale === loc ? "bg-slate-100 font-medium" : ""}
           >
             {loc === "ar" ? t("arabic") : t("english")}
           </DropdownMenuItem>

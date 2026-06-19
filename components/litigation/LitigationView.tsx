@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { Gavel, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LegalBadge } from "@/lib/legal-labels";
 import { SessionOutcomeModal } from "./SessionOutcomeModal";
 
 export type LawsuitWithSessions = {
@@ -34,57 +35,68 @@ export type LawsuitWithSessions = {
 
 export function LitigationView({ lawsuits }: { lawsuits: LawsuitWithSessions[] }) {
   const t = useTranslations("litigation");
+  const locale = useLocale();
   const [modalSessionId, setModalSessionId] = useState<string | null>(null);
 
   return (
     <>
       <div className="space-y-6">
         {lawsuits.map((lawsuit) => (
-          <Card key={lawsuit.id}>
-            <CardHeader>
-              <CardTitle className="text-start">
-                {t("caseNumber")} {lawsuit.caseNumber} / {lawsuit.year} —{" "}
-                {lawsuit.courtName}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground text-start">
-                {t("opponent")}: {lawsuit.opponentName} | {t("assignedLawyer")}:{" "}
-                {lawsuit.lawyerName}
-              </p>
+          <Card key={lawsuit.id} className="overflow-hidden border-slate-200 shadow-sm">
+            <CardHeader className="border-b border-slate-100 bg-white">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+                  <Scale className="h-5 w-5" />
+                </div>
+                <div className="text-start">
+                  <CardTitle className="text-lg text-slate-900">
+                    {t("caseNumber")} {lawsuit.caseNumber} / {lawsuit.year}
+                  </CardTitle>
+                  <CardDescription className="mt-1 text-base font-medium text-slate-700">
+                    {lawsuit.courtName}
+                  </CardDescription>
+                  <p className="mt-2 text-sm text-slate-500">
+                    {t("opponent")}: {lawsuit.opponentName} · {t("assignedLawyer")}: {lawsuit.lawyerName}
+                  </p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                     <TableHead>{t("sessionDate")}</TableHead>
                     <TableHead>{t("requiredAction")}</TableHead>
-                    <TableHead>{t("pending")}</TableHead>
+                    <TableHead>{t("sessionStatus")}</TableHead>
                     <TableHead>{t("sessionOutcome")}</TableHead>
-                    <TableHead>{t("logOutcome")}</TableHead>
+                    <TableHead className="text-center">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {lawsuit.sessions.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell>
+                    <TableRow key={s.id} className="bg-white">
+                      <TableCell className="font-medium">
                         {format(new Date(s.sessionDate), "yyyy-MM-dd HH:mm")}
                       </TableCell>
                       <TableCell>{s.requiredAction}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            s.status === "PENDING" ? "destructive" : "secondary"
-                          }
-                        >
-                          {s.status === "PENDING" ? t("pending") : t("completed")}
-                        </Badge>
+                        <LegalBadge
+                          category="courtSessionStatus"
+                          value={s.status}
+                          locale={locale}
+                        />
                       </TableCell>
-                      <TableCell>{s.sessionOutcome ?? "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="max-w-xs text-slate-600">
+                        {s.sessionOutcome ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-center">
                         {s.status === "PENDING" && (
                           <Button
                             size="sm"
+                            className="gap-2 bg-slate-900 hover:bg-slate-800"
                             onClick={() => setModalSessionId(s.id)}
                           >
+                            <Gavel className="h-4 w-4" />
                             {t("logOutcome")}
                           </Button>
                         )}

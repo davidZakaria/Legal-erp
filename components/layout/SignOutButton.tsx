@@ -13,10 +13,10 @@ export function SignOutButton() {
       variant="ghost"
       size="sm"
       onClick={() => signOut({ callbackUrl: "/ar/login" })}
-      className="gap-2"
+      className="gap-2 text-slate-600 hover:text-slate-900"
     >
       <LogOut className="h-4 w-4" />
-      {t("logout")}
+      <span className="hidden sm:inline">{t("logout")}</span>
     </Button>
   );
 }
