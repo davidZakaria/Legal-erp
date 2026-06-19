@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  LEGAL_MANAGER
+  LAWYER
+}
+
+enum CourtSessionStatus {
+  PENDING
+  COMPLETED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  phone        String?
+  role         Role     @default(LAWYER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  auditLogs      AuditLog[]
+  assignedLawsuits Lawsuit[]     @relation("AssignedLawyer")
+  assignedProsecutions Prosecution[] @relation("AssignedProsecutionLawyer")
+
+  @@map("users")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  action     String
+  entityName String   @map("entity_name")
+  entityId   String   @map("entity_id")
+  timestamp  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, timestamp])
+  @@map("audit_logs")
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  contracts Contract[]
+
+  @@map("projects")
+}
+
+model Contract {
+  id                  String   @id @default(cuid())
+  projectId           String   @map("project_id")
+  contractorName      String   @map("contractor_name")
+  totalValue          Decimal  @map("total_value") @db.Decimal(15, 2)
+  penaltyClause       String   @map("penalty_clause")
+  guaranteeExpiryDate DateTime @map("guarantee_expiry_date")
+  status              String
+  fileUrl             String   @map("file_url")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@index([guaranteeExpiryDate])
+  @@map("contracts")
+}
+
+model GAFITask {
+  id        String   @id @default(cuid())
+  taskType  String   @map("task_type")
+  title     String
+  deadline  DateTime
+  status    String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("gafi_tasks")
+}
+
+model Lawsuit {
+  id               String   @id @default(cuid())
+  caseNumber       String   @map("case_number")
+  year             Int
+  courtName        String   @map("court_name")
+  opponentName     String   @map("opponent_name")
+  assignedLawyerId String   @map("assigned_lawyer_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  assignedLawyer User          @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+  courtSessions  CourtSession[]
+
+  @@map("lawsuits")
+}
+
+model CourtSession {
+  id               String             @id @default(cuid())
+  lawsuitId        String             @map("lawsuit_id")
+  sessionDate      DateTime           @map("session_date")
+  requiredAction   String             @map("required_action")
+  status           CourtSessionStatus @default(PENDING)
+  sessionOutcome   String?            @map("session_outcome")
+  nextSessionDate  DateTime?          @map("next_session_date")
+  isReminderSent   Boolean            @default(false) @map("is_reminder_sent")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  lawsuit Lawsuit @relation(fields: [lawsuitId], references: [id], onDelete: Restrict)
+
+  @@index([sessionDate, status, isReminderSent])
+  @@map("court_sessions")
+}
+
+model Prosecution {
+  id               String   @id @default(cuid())
+  caseNumber       String   @map("case_number")
+  year             Int
+  policeStation    String   @map("police_station")
+  clientName       String   @map("client_name")
+  issueType        String   @map("issue_type")
+  assignedLawyerId String   @map("assigned_lawyer_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  assignedLawyer User @relation("AssignedProsecutionLawyer", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+
+  @@map("prosecutions")
+}

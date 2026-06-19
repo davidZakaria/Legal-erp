@@ -1,0 +1,34 @@
+import { Role } from "@prisma/client";
+
+export function canViewAuditLogs(role: Role): boolean {
+  return role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER;
+}
+
+export function canDownloadContract(
+  role: Role,
+  userId: string,
+  assignedLawyerIds: string[] = []
+): boolean {
+  if (role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER) {
+    return true;
+  }
+  if (role === Role.LAWYER) {
+    return assignedLawyerIds.includes(userId);
+  }
+  return false;
+}
+
+export function canLogSessionOutcome(
+  role: Role,
+  userId: string,
+  assignedLawyerId: string
+): boolean {
+  if (role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER) {
+    return true;
+  }
+  return role === Role.LAWYER && userId === assignedLawyerId;
+}
+
+export function isManagerOrAbove(role: Role): boolean {
+  return role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER;
+}

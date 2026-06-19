@@ -1,0 +1,89 @@
+{
+  "common": {
+    "appName": "Legal ERP - New Jersey Developments",
+    "company": "New Jersey Developments",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "download": "Download",
+    "actions": "Actions",
+    "status": "Status",
+    "search": "Search",
+    "noData": "No data available",
+    "accessDenied": "Access denied",
+    "logout": "Log out",
+    "language": "Language",
+    "arabic": "العربية",
+    "english": "English",
+    "expiringSoon": "Expiring Soon",
+    "viewAll": "View all"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "contracts": "Site Contracts",
+    "gafi": "GAFI & Corporate",
+    "litigation": "Litigation & Lawsuits",
+    "prosecutions": "Prosecutions",
+    "auditLogs": "Audit Logs"
+  },
+  "auth": {
+    "login": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "loginButton": "Sign In",
+    "loginError": "Invalid email or password",
+    "welcome": "Welcome to the Legal ERP System"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "contractsExpiring": "Contracts with expiring guarantees",
+    "sessionsTomorrow": "Sessions tomorrow",
+    "openProsecutions": "Open prosecution cases",
+    "welcome": "Welcome, {name}"
+  },
+  "contracts": {
+    "title": "Site Contracts",
+    "contractor": "Contractor",
+    "project": "Project",
+    "totalValue": "Total Value",
+    "guaranteeExpiry": "Guarantee Expiry",
+    "penaltyClause": "Penalty Clause",
+    "guaranteeRadar": "Guarantee Radar"
+  },
+  "gafi": {
+    "title": "GAFI & Corporate Affairs",
+    "taskType": "Task Type",
+    "deadline": "Deadline"
+  },
+  "litigation": {
+    "title": "Litigation & Lawsuits",
+    "caseNumber": "Case Number",
+    "year": "Year",
+    "court": "Court",
+    "opponent": "Opponent",
+    "assignedLawyer": "Assigned Lawyer",
+    "sessionDate": "Session Date",
+    "requiredAction": "Required Action",
+    "logOutcome": "Log Session Outcome",
+    "sessionOutcome": "Session Outcome",
+    "nextSessionDate": "Next Session Date",
+    "nextRequiredAction": "Next Required Action",
+    "pending": "Pending",
+    "completed": "Completed"
+  },
+  "prosecutions": {
+    "title": "Prosecutions & Misdemeanors",
+    "policeStation": "Police Station",
+    "clientName": "Client Name",
+    "issueType": "Issue Type",
+    "casesAt": "Cases at {station}"
+  },
+  "auditLogs": {
+    "title": "Audit Logs",
+    "user": "User",
+    "action": "Action",
+    "entity": "Entity",
+    "entityId": "Entity ID",
+    "timestamp": "Timestamp"
+  }
+}

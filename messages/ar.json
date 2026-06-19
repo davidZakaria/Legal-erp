@@ -1,0 +1,89 @@
+{
+  "common": {
+    "appName": "نظام الإدارة القانونية - نيو جيرسي",
+    "company": "New Jersey Developments",
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "download": "تحميل",
+    "actions": "إجراءات",
+    "status": "الحالة",
+    "search": "بحث",
+    "noData": "لا توجد بيانات",
+    "accessDenied": "غير مصرح لك بالوصول",
+    "logout": "تسجيل الخروج",
+    "language": "اللغة",
+    "arabic": "العربية",
+    "english": "English",
+    "expiringSoon": "ينتهي قريباً",
+    "viewAll": "عرض الكل"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "contracts": "عقود المواقع",
+    "gafi": "هيئة الاستثمار",
+    "litigation": "المحاكم والإنذارات",
+    "prosecutions": "النيابات والجنح",
+    "auditLogs": "سجل التدقيق"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "loginButton": "دخول",
+    "loginError": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "welcome": "مرحباً بك في نظام الإدارة القانونية"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "contractsExpiring": "عقود تنتهي ضماناتها قريباً",
+    "sessionsTomorrow": "جلسات غداً",
+    "openProsecutions": "قضايا النيابات المفتوحة",
+    "welcome": "مرحباً، {name}"
+  },
+  "contracts": {
+    "title": "عقود المواقع",
+    "contractor": "المقاول",
+    "project": "المشروع",
+    "totalValue": "القيمة الإجمالية",
+    "guaranteeExpiry": "انتهاء الضمان",
+    "penaltyClause": "بند الجزاء",
+    "guaranteeRadar": "رادار الضمانات"
+  },
+  "gafi": {
+    "title": "هيئة الاستثمار والشؤون المؤسسية",
+    "taskType": "نوع المهمة",
+    "deadline": "الموعد النهائي"
+  },
+  "litigation": {
+    "title": "المحاكم والإنذارات",
+    "caseNumber": "رقم الدعوى",
+    "year": "السنة",
+    "court": "المحكمة",
+    "opponent": "الخصم",
+    "assignedLawyer": "المحامي المكلف",
+    "sessionDate": "تاريخ الجلسة",
+    "requiredAction": "المطلوب بالجلسة",
+    "logOutcome": "تأييد الجلسة",
+    "sessionOutcome": "ما تم بالجلسة",
+    "nextSessionDate": "تاريخ الجلسة القادمة",
+    "nextRequiredAction": "المطلوب بالجلسة القادمة",
+    "pending": "قيد الانتظار",
+    "completed": "مكتملة"
+  },
+  "prosecutions": {
+    "title": "النيابات والجنح",
+    "policeStation": "القسم / المركز",
+    "clientName": "اسم العميل",
+    "issueType": "نوع القضية",
+    "casesAt": "قضايا في {station}"
+  },
+  "auditLogs": {
+    "title": "سجل التدقيق",
+    "user": "المستخدم",
+    "action": "الإجراء",
+    "entity": "الكيان",
+    "entityId": "معرف الكيان",
+    "timestamp": "الوقت"
+  }
+}
