@@ -1,12 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canCreateLawsuit } from "@/lib/rbac";
+import { canCreateLawsuit, isManagerOrAbove } from "@/lib/rbac";
 import { Role } from "@prisma/client";
 import { Scale } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { LitigationView } from "@/components/litigation/LitigationView";
 import { CreateLawsuitDialog } from "@/components/litigation/CreateLawsuitDialog";
+import { ImportLawsuitsDialog } from "@/components/litigation/ImportLawsuitsDialog";
+import { TriggerWhatsAppRemindersButton } from "@/components/litigation/TriggerWhatsAppRemindersButton";
 
 export default async function LitigationPage() {
   const t = await getTranslations("litigation");
@@ -47,13 +49,21 @@ export default async function LitigationPage() {
     ? canCreateLawsuit(session.user.role)
     : false;
 
+  const canTriggerWhatsApp = session?.user
+    ? isManagerOrAbove(session.user.role)
+    : false;
+
   return (
     <div>
       <PageHeader
         title={t("title")}
         icon={Scale}
         action={
-          <CreateLawsuitDialog lawyers={lawyers} canCreate={canCreate} />
+          <div className="flex flex-wrap items-center gap-2">
+            <TriggerWhatsAppRemindersButton canTrigger={canTriggerWhatsApp} />
+            <ImportLawsuitsDialog canImport={canCreate} />
+            <CreateLawsuitDialog lawyers={lawyers} canCreate={canCreate} />
+          </div>
         }
       />
       <LitigationView lawsuits={data} />

@@ -1,83 +1,111 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
-import { AlertTriangle, CalendarClock, LayoutDashboard, ShieldAlert } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LayoutDashboard, Scale, Building2, FileSignature, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ExecutiveKpiCards } from "@/components/dashboard/ExecutiveKpiCards";
+import { LawsuitsByCourtChart } from "@/components/dashboard/LawsuitsByCourtChart";
+import { ExportBoardReportButton } from "@/components/dashboard/ExportBoardReportButton";
+import { isManagerOrAbove } from "@/lib/rbac";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
+  const locale = await getLocale();
   const session = await auth();
-  const thirtyDaysFromNow = addDays(new Date(), 30);
-  const tomorrow = addDays(new Date(), 1);
-  const tomorrowEnd = new Date(tomorrow);
-  tomorrowEnd.setHours(23, 59, 59, 999);
+  const now = new Date();
+  const thirtyDaysFromNow = addDays(now, 30);
 
-  const [expiringContracts, sessionsTomorrow, prosecutions] = await Promise.all([
-    prisma.contract.count({
-      where: { guaranteeExpiryDate: { lte: thirtyDaysFromNow } },
+  const [
+    activeLawsuits,
+    pendingGafiTasks,
+    activeContractsAggregate,
+    expiringGuarantees,
+    lawsuitsByCourt,
+  ] = await Promise.all([
+    prisma.lawsuit.count(),
+    prisma.gAFITask.count({
+      where: { status: { in: ["PENDING", "IN_PROGRESS"] } },
     }),
-    prisma.courtSession.count({
+    prisma.contract.aggregate({
+      where: { status: "ACTIVE" },
+      _sum: { totalValue: true },
+    }),
+    prisma.contract.count({
       where: {
-        sessionDate: { gte: tomorrow, lte: tomorrowEnd },
-        status: "PENDING",
+        status: "ACTIVE",
+        guaranteeExpiryDate: {
+          gte: now,
+          lte: thirtyDaysFromNow,
+        },
       },
     }),
-    prisma.prosecution.count(),
+    prisma.lawsuit.groupBy({
+      by: ["courtName"],
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+    }),
   ]);
 
-  const stats = [
+  const totalContractsValue = Number(activeContractsAggregate._sum.totalValue ?? 0);
+  const formattedContractsValue = new Intl.NumberFormat(
+    locale === "ar" ? "ar-EG" : "en-US",
+    { maximumFractionDigits: 0 }
+  ).format(totalContractsValue);
+
+  const chartData = lawsuitsByCourt.map((row) => ({
+    courtName: row.courtName,
+    count: row._count.id,
+  }));
+
+  const canExport = session?.user ? isManagerOrAbove(session.user.role) : false;
+
+  const kpis = [
     {
-      title: t("contractsExpiring"),
-      value: expiringContracts,
+      key: "lawsuits",
+      title: t("activeLawsuits"),
+      value: String(activeLawsuits),
+      icon: Scale,
+    },
+    {
+      key: "gafi",
+      title: t("pendingGafiTasks"),
+      value: String(pendingGafiTasks),
+      icon: Building2,
+    },
+    {
+      key: "contracts",
+      title: t("activeContractsValue"),
+      value: `${formattedContractsValue} ${t("egp")}`,
+      icon: FileSignature,
+    },
+    {
+      key: "guarantees",
+      title: t("expiringGuarantees"),
+      value: String(expiringGuarantees),
       icon: AlertTriangle,
-      accent: "text-destructive",
-      bg: "bg-destructive/10",
-    },
-    {
-      title: t("sessionsTomorrow"),
-      value: sessionsTomorrow,
-      icon: CalendarClock,
-      accent: "text-blue-600",
-      bg: "bg-blue-50",
-    },
-    {
-      title: t("openProsecutions"),
-      value: prosecutions,
-      icon: ShieldAlert,
-      accent: "text-slate-900",
-      bg: "bg-slate-100",
+      radar: expiringGuarantees > 0,
     },
   ];
 
   return (
-    <div>
+    <div className="space-y-6" dir={locale === "ar" ? "rtl" : "ltr"}>
       <PageHeader
-        title={t("welcome", { name: session?.user?.name ?? "" })}
-        description={t("title")}
+        title={t("executiveTitle")}
+        description={t("welcome", { name: session?.user?.name ?? "" })}
         icon={LayoutDashboard}
+        action={<ExportBoardReportButton canExport={canExport} />}
       />
-      <div className="grid gap-5 md:grid-cols-3">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title} className="border-slate-200 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">
-                  {stat.title}
-                </CardTitle>
-                <div className={`rounded-lg p-2 ${stat.bg}`}>
-                  <Icon className={`h-4 w-4 ${stat.accent}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className={`text-3xl font-bold ${stat.accent}`}>{stat.value}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+
+      <ExecutiveKpiCards kpis={kpis} />
+
+      <LawsuitsByCourtChart
+        data={chartData}
+        title={t("lawsuitsByCourt")}
+        countLabel={t("lawsuitCount")}
+        emptyLabel={t("noChartData")}
+        direction={locale === "ar" ? "rtl" : "ltr"}
+      />
     </div>
   );
 }

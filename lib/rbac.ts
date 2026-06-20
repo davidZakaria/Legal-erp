@@ -48,3 +48,11 @@ export function canCreateContract(role: Role): boolean {
     role === Role.LAWYER
   );
 }
+
+export function canManageProsecutions(role: Role): boolean {
+  return (
+    role === Role.SUPER_ADMIN ||
+    role === Role.LEGAL_MANAGER ||
+    role === Role.LAWYER
+  );
+}

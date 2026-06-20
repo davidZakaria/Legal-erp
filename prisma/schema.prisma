@@ -132,6 +132,7 @@ model Prosecution {
   policeStation    String   @map("police_station")
   clientName       String   @map("client_name")
   issueType        String   @map("issue_type")
+  status           String   @default("POLICE_REPORT")
   assignedLawyerId String   @map("assigned_lawyer_id")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")

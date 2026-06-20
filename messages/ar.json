@@ -24,7 +24,7 @@
     "gafi": "هيئة الاستثمار",
     "litigation": "المحاكم والإنذارات",
     "prosecutions": "النيابات والجنح",
-    "auditLogs": "سجل التدقيق"
+    "auditLogs": "سجل النظام"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -36,10 +36,23 @@
   },
   "dashboard": {
     "title": "لوحة التحكم",
+    "executiveTitle": "لوحة القيادة",
+    "activeLawsuits": "دعاوى متداولة",
+    "pendingGafiTasks": "مهام مؤسسية قيد التنفيذ",
+    "activeContractsValue": "إجمالي قيمة العقود السارية",
+    "expiringGuarantees": "ضمانات تنتهي خلال 30 يوماً",
+    "lawsuitsByCourt": "توزيع القضايا على المحاكم",
+    "lawsuitCount": "عدد القضايا",
+    "noChartData": "لا توجد بيانات لعرضها",
+    "egp": "ج.م",
     "contractsExpiring": "عقود تنتهي ضماناتها قريباً",
     "sessionsTomorrow": "جلسات غداً",
     "openProsecutions": "قضايا النيابات المفتوحة",
-    "welcome": "مرحباً، {name}"
+    "welcome": "مرحباً، {name}",
+    "exportBoardReport": "تصدير تقرير الإدارة",
+    "exportLoading": "جاري إعداد التقرير...",
+    "exportSuccess": "تم تنزيل تقرير الإدارة بنجاح",
+    "exportError": "تعذر تصدير التقرير"
   },
   "contracts": {
     "title": "عقود المواقع",
@@ -115,21 +128,70 @@
     "courtName": "اسم المحكمة",
     "firstSessionDate": "تاريخ أول جلسة",
     "firstSessionRequiredAction": "المطلوب في الجلسة",
-    "selectLawyer": "اختر المحامي المكلف"
+    "selectLawyer": "اختر المحامي المكلف",
+    "whatsappTrigger": "إرسال تذكيرات واتساب لجلسات الغد (تجريبي)",
+    "whatsappTriggerLoading": "جاري إرسال التذكيرات...",
+    "whatsappTriggerSuccess": "تم إرسال {sent} من أصل {total} تذكير بنجاح",
+    "whatsappTriggerError": "تعذر إرسال تذكيرات واتساب",
+    "importCases": "استيراد قضايا",
+    "importTitle": "استيراد قضايا من Excel",
+    "importDescription": "ارفع ملف Excel يحتوي على بيانات الدعاوى القديمة لإدخالها دفعة واحدة",
+    "importFileLabel": "ملف Excel (.xlsx)",
+    "importColumnsHint": "الأعمدة المطلوبة: رقم الدعوى، السنة، المحكمة (أو اسم المحكمة)، الخصم (أو اسم الخصم)، بريد المحامي",
+    "importRowCount": "{count} صف جاهز للاستيراد",
+    "importParseError": "تعذر قراءة الملف. تأكد من صحة الأعمدة",
+    "importNoRows": "لا توجد صفوف صالحة للاستيراد",
+    "importSuccess": "تم استيراد {count} دعوى بنجاح",
+    "importError": "تعذر استيراد القضايا",
+    "importing": "جاري الاستيراد...",
+    "importSubmit": "استيراد القضايا"
   },
   "prosecutions": {
     "title": "النيابات والجنح",
-    "policeStation": "القسم / المركز",
-    "clientName": "اسم العميل",
+    "policeStation": "القسم / النيابة",
+    "clientName": "اسم العميل / الخصم",
     "issueType": "نوع القضية",
-    "casesAt": "قضايا في {station}"
+    "casesAt": "قضايا في {station}",
+    "addProsecution": "إضافة محضر / جنحة",
+    "createTitle": "إضافة محضر / جنحة",
+    "createDescription": "أدخل بيانات المحضر أو الجنحة والمحامي المكلف",
+    "createSubmit": "حفظ المحضر",
+    "createError": "تعذر إنشاء المحضر",
+    "updateError": "تعذر تحديث الحالة",
+    "caseNumber": "رقم المحضر/القضية",
+    "year": "السنة",
+    "assignedLawyer": "المحامي المكلف",
+    "selectLawyer": "اختر المحامي المكلف",
+    "selectIssueType": "اختر نوع القضية",
+    "sendMission": "إرسال مأمورية مجمعة",
+    "missionSending": "جاري إرسال المأمورية...",
+    "missionSuccess": "تم إرسال {sent} من أصل {total} مأمورية بنجاح",
+    "missionError": "تعذر إرسال المأمورية",
+    "generateReport": "طباعة عريضة الشيك",
+    "generatingReport": "جاري إنشاء العريضة...",
+    "reportSuccess": "تم تحميل عريضة الشيك بنجاح",
+    "reportError": "تعذر إنشاء العريضة",
+    "status_POLICE_REPORT": "تحديد كـ: قيد التحقيق بالقسم",
+    "status_IN_COURT": "تحديد كـ: متداولة بالمحكمة",
+    "status_RECONCILED": "تحديد كـ: تم التصالح / حفظ"
   },
   "auditLogs": {
-    "title": "سجل التدقيق",
+    "title": "سجل النظام",
+    "description": "سجل تدقيق شامل لجميع الإجراءات داخل النظام",
     "user": "المستخدم",
     "action": "الإجراء",
-    "entity": "الكيان",
-    "entityId": "معرف الكيان",
-    "timestamp": "الوقت"
+    "targetDetails": "تفاصيل الهدف",
+    "timestamp": "التاريخ والوقت"
+  },
+  "search": {
+    "placeholder": "بحث شامل...",
+    "dialogPlaceholder": "ابحث في الدعاوى والعقود والنيابات والمهام...",
+    "typeToSearch": "اكتب حرفين على الأقل للبحث",
+    "searching": "جاري البحث...",
+    "noResults": "لا توجد نتائج",
+    "lawsuits": "الدعاوى",
+    "contracts": "عقود المواقع",
+    "prosecutions": "النيابات والجنح",
+    "gafi": "مهام مؤسسية"
   }
 }

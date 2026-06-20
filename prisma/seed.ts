@@ -190,6 +190,7 @@ async function main() {
         policeStation: "التجمع الخامس",
         clientName: "NJD - مشروع جورا",
         issueType: "شيك بدون رصيد",
+        status: "POLICE_REPORT",
         assignedLawyerId: lawyer.id,
       },
       {
@@ -198,6 +199,7 @@ async function main() {
         policeStation: "التجمع الخامس",
         clientName: "NJD - مشروع جميلة",
         issueType: "إيصال أمانة",
+        status: "IN_COURT",
         assignedLawyerId: lawyer.id,
       },
       {
@@ -205,7 +207,8 @@ async function main() {
         year: 2024,
         policeStation: "الجلالة",
         clientName: "NJD - الجلالة",
-        issueType: "تعدٍ على أرض",
+        issueType: "تعدي على أرض",
+        status: "POLICE_REPORT",
         assignedLawyerId: lawyer.id,
       },
     ],

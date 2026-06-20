@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Role } from "@prisma/client";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SignOutButton } from "./SignOutButton";
+import { GlobalSearch } from "./GlobalSearch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
@@ -34,18 +35,22 @@ export function TopNavbar({
     locale === "ar" ? roleLabels[userRole].ar : roleLabels[userRole].en;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm md:px-6">
+      <div className="flex shrink-0 items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
           <Building2 className="h-5 w-5" />
         </div>
-        <div className="text-start">
+        <div className="hidden text-start sm:block">
           <p className="text-sm font-bold text-slate-900">NJD</p>
           <p className="text-xs text-slate-500">{t("company")}</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-1 items-center justify-center">
+        <GlobalSearch />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-3">
         <LanguageSwitcher />
         <Separator orientation="vertical" className="h-8" />
         <div className="flex items-center gap-3">
