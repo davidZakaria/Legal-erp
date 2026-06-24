@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/auditLogger";
 import { canCreateLawsuit } from "@/lib/rbac";
 import { CourtSessionStatus, LawsuitStatus, Role } from "@prisma/client";
 import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
+import { notifyAssignmentNonBlocking } from "@/lib/email";
 
 export async function createNewLawsuit(formData: FormData) {
   const session = await auth();
@@ -97,6 +98,12 @@ export async function createNewLawsuit(formData: FormData) {
   });
 
   await logActivity(session.user.id, "CREATE", "Lawsuit", lawsuit.id);
+
+  notifyAssignmentNonBlocking(
+    lawyer,
+    "دعوى جديدة",
+    `تم تكليفك للتو بمتابعة دعوى رقم ${caseNumber} لسنة ${year} — ${courtName} ضد ${opponentName}.`
+  );
 
   revalidatePath("/ar/litigation");
   revalidatePath("/en/litigation");

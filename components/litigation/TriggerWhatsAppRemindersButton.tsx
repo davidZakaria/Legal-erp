@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { MessageCircle } from "lucide-react";
+import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,7 @@ export function TriggerWhatsAppRemindersButton({ canTrigger }: { canTrigger: boo
 
   const handleTrigger = async () => {
     setLoading(true);
-    const toastId = toast.loading(t("whatsappTriggerLoading"));
+    const toastId = toast.loading(t("emailTriggerLoading"));
 
     try {
       const response = await fetch("/api/cron/whatsapp-reminders");
@@ -25,33 +25,28 @@ export function TriggerWhatsAppRemindersButton({ canTrigger }: { canTrigger: boo
       };
 
       if (!response.ok) {
-        toast.error(data.error ?? t("whatsappTriggerError"), { id: toastId });
+        toast.error(data.error ?? t("emailTriggerError"), { id: toastId });
         return;
       }
 
       toast.success(
-        t("whatsappTriggerSuccess", {
+        t("emailTriggerSuccess", {
           sent: data.sent ?? 0,
           total: data.total ?? 0,
         }),
         { id: toastId }
       );
     } catch {
-      toast.error(t("whatsappTriggerError"), { id: toastId });
+      toast.error(t("emailTriggerError"), { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Button
-      variant="outline"
-      className="gap-2 border-green-200 bg-green-50/50 hover:bg-green-50"
-      onClick={handleTrigger}
-      disabled={loading}
-    >
-      <MessageCircle className="h-4 w-4 text-green-600" />
-      {loading ? t("whatsappTriggerLoading") : t("whatsappTrigger")}
+    <Button variant="outline" onClick={handleTrigger} disabled={loading}>
+      <Mail className="h-4 w-4 me-2 text-blue-600" />
+      {loading ? t("emailTriggerLoading") : t("emailTrigger")}
     </Button>
   );
 }

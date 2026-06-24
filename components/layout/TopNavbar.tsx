@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SignOutButton } from "./SignOutButton";
 import { GlobalSearch } from "./GlobalSearch";
 import { QuickAddMenu } from "./QuickAddMenu";
+import { BroadcastDialog } from "./BroadcastDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
@@ -58,6 +59,7 @@ export function TopNavbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <BroadcastDialog userRole={userRole} />
         <QuickAddMenu userRole={userRole} lawyers={lawyers} lawsuits={lawsuits} />
         <LanguageSwitcher />
         <Separator orientation="vertical" className="hidden h-8 sm:block" />

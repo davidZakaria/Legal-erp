@@ -3,8 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canManageProsecutions } from "@/lib/rbac";
-import { buildMissionMessage } from "@/lib/prosecutions/buildMissionMessage";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import {
+  buildLegalEmailTemplate,
+  buildMissionEmailBodyHtml,
+  sendEmail,
+} from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -55,22 +58,23 @@ export async function POST(request: NextRequest) {
   for (const cases of byLawyer.values()) {
     const lawyer = cases[0].assignedLawyer;
 
-    if (!lawyer.phone) {
+    if (!lawyer.email) {
       results.push({
         lawyerName: lawyer.name,
         success: false,
-        message: "Lawyer has no phone number",
+        message: "Lawyer has no email address",
       });
       continue;
     }
 
-    const text = buildMissionMessage({
-      policeStation,
-      lawyerName: lawyer.name,
-      cases,
+    const subject = `🚗 مأمورية مجمعة - نيابة/قسم ${policeStation}`;
+    const bodyHtml = buildMissionEmailBodyHtml(lawyer.name, policeStation, cases);
+    const sendResult = await sendEmail({
+      to: lawyer.email,
+      subject,
+      html: buildLegalEmailTemplate(subject, bodyHtml),
     });
 
-    const sendResult = await sendWhatsAppMessage(lawyer.phone, text);
     results.push({
       lawyerName: lawyer.name,
       success: sendResult.success,

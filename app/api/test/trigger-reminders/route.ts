@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     <html dir="rtl" lang="ar">
     <head>
       <meta charset="utf-8">
-      <title>NJD Legal ERP - WhatsApp Reminders</title>
+      <title>NJD Legal ERP - Email Reminders</title>
       <style>
         body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; }
         h1 { color: #1e40af; }
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       </style>
     </head>
     <body>
-      <h1>⚖️ تذكيرات واتساب — NJD Legal ERP</h1>
+      <h1>⚖️ تذكيرات الإيميل — NJD Legal ERP</h1>
       <p><strong>تم الإرسال:</strong> ${result.sent} / ${result.total}</p>
       <pre>${JSON.stringify(result.results, null, 2)}</pre>
     </body>

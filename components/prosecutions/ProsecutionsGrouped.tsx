@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, MapPin, MessageCircle, MoreHorizontal } from "lucide-react";
+import { FileText, Mail, MapPin, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { LegalBadge } from "@/lib/legal-labels";
 import {
@@ -159,11 +159,11 @@ export function ProsecutionsGrouped({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ms-auto gap-2 border-green-200 bg-green-50/50 hover:bg-green-50"
+                  className="ms-auto"
                   onClick={() => handleSendMission(station, items)}
                   disabled={isSending}
                 >
-                  <MessageCircle className="h-4 w-4 text-green-600" />
+                  <Mail className="h-4 w-4 me-2 text-blue-600" />
                   {isSending ? t("missionSending") : t("sendMission")}
                 </Button>
               )}
