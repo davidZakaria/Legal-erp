@@ -18,6 +18,41 @@ enum CourtSessionStatus {
   COMPLETED
 }
 
+enum LawsuitStatus {
+  UNDER_REVIEW
+  ACTIVE
+  RESERVED
+  COMPLETED
+}
+
+enum LegalTaskStatus {
+  PENDING
+  COMPLETED
+}
+
+enum PowerOfAttorneyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum ExecutionRequestStatus {
+  PENDING_BAILIFF
+  EXECUTED
+}
+
+enum ExpenseStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REIMBURSED
+}
+
+enum LegalDocumentCategory {
+  CONTRACT_TEMPLATE
+  GAFI_FORM
+  LAWS
+  INTERNAL_MEMO
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -28,9 +63,14 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  auditLogs      AuditLog[]
-  assignedLawsuits Lawsuit[]     @relation("AssignedLawyer")
-  assignedProsecutions Prosecution[] @relation("AssignedProsecutionLawyer")
+  auditLogs            AuditLog[]
+  assignedLawsuits     Lawsuit[]          @relation("AssignedLawyer")
+  assignedProsecutions Prosecution[]      @relation("AssignedProsecutionLawyer")
+  assignedLegalTasks   LegalTask[]        @relation("AssignedLegalTasks")
+  assignedPOAs         PowerOfAttorney[]  @relation("AssignedPOAs")
+  assignedExecutions   ExecutionRequest[] @relation("AssignedExecutions")
+  requestedExpenses    Expense[]          @relation("RequestedExpenses")
+  uploadedDocuments    LegalDocument[]    @relation("UploadedDocuments")
 
   @@map("users")
 }
@@ -92,19 +132,39 @@ model GAFITask {
 }
 
 model Lawsuit {
-  id               String   @id @default(cuid())
-  caseNumber       String   @map("case_number")
+  id               String        @id @default(cuid())
+  caseNumber       String        @map("case_number")
   year             Int
-  courtName        String   @map("court_name")
-  opponentName     String   @map("opponent_name")
-  assignedLawyerId String   @map("assigned_lawyer_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  courtName        String        @map("court_name")
+  opponentName     String        @map("opponent_name")
+  clientName       String        @default("NJD") @map("client_name")
+  archiveNumber    String?       @map("archive_number")
+  registrationDate DateTime      @default(now()) @map("registration_date")
+  overallStatus    LawsuitStatus @default(UNDER_REVIEW) @map("overall_status")
+  assignedLawyerId String        @map("assigned_lawyer_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  assignedLawyer User          @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
-  courtSessions  CourtSession[]
+  assignedLawyer   User                @relation("AssignedLawyer", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+  courtSessions    CourtSession[]
+  attachments      LawsuitAttachment[]
+  executionRequests ExecutionRequest[]
+  expenses         Expense[]
 
   @@map("lawsuits")
+}
+
+model LawsuitAttachment {
+  id         String   @id @default(cuid())
+  lawsuitId  String   @map("lawsuit_id")
+  fileName   String   @map("file_name")
+  fileUrl    String   @map("file_url")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+
+  lawsuit Lawsuit @relation(fields: [lawsuitId], references: [id], onDelete: Cascade)
+
+  @@index([lawsuitId])
+  @@map("lawsuit_attachments")
 }
 
 model CourtSession {
@@ -140,4 +200,85 @@ model Prosecution {
   assignedLawyer User @relation("AssignedProsecutionLawyer", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
 
   @@map("prosecutions")
+}
+
+model LegalTask {
+  id               String          @id @default(cuid())
+  title            String
+  description      String?
+  deadline         DateTime
+  status           LegalTaskStatus @default(PENDING)
+  assignedLawyerId String          @map("assigned_lawyer_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  assignedLawyer User @relation("AssignedLegalTasks", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+
+  @@index([deadline, status])
+  @@map("legal_tasks")
+}
+
+model PowerOfAttorney {
+  id               String                @id @default(cuid())
+  poaNumber        String                @map("poa_number")
+  clientName       String                @map("client_name")
+  type             String
+  expiryDate       DateTime?             @map("expiry_date")
+  status           PowerOfAttorneyStatus @default(ACTIVE)
+  assignedLawyerId String                @map("assigned_lawyer_id")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  assignedLawyer User @relation("AssignedPOAs", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+
+  @@map("power_of_attorneys")
+}
+
+model ExecutionRequest {
+  id               String                 @id @default(cuid())
+  lawsuitId        String                 @map("lawsuit_id")
+  executionType    String                 @map("execution_type")
+  status           ExecutionRequestStatus @default(PENDING_BAILIFF)
+  assignedLawyerId String                 @map("assigned_lawyer_id")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  lawsuit        Lawsuit @relation(fields: [lawsuitId], references: [id], onDelete: Restrict)
+  assignedLawyer User    @relation("AssignedExecutions", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+
+  @@map("execution_requests")
+}
+
+model Expense {
+  id            String        @id @default(cuid())
+  amount        Float
+  description   String
+  date          DateTime
+  receiptUrl    String?       @map("receipt_url")
+  lawsuitId     String?       @map("lawsuit_id")
+  requestedById String        @map("requested_by_id")
+  status        ExpenseStatus @default(PENDING_APPROVAL)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  lawsuit     Lawsuit? @relation(fields: [lawsuitId], references: [id], onDelete: SetNull)
+  requestedBy User     @relation("RequestedExpenses", fields: [requestedById], references: [id], onDelete: Restrict)
+
+  @@index([date, status])
+  @@index([requestedById])
+  @@map("expenses")
+}
+
+model LegalDocument {
+  id           String               @id @default(cuid())
+  title        String
+  category     LegalDocumentCategory
+  fileUrl      String               @map("file_url")
+  uploadedAt   DateTime             @default(now()) @map("uploaded_at")
+  uploadedById String               @map("uploaded_by_id")
+
+  uploadedBy User @relation("UploadedDocuments", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([category])
+  @@map("legal_documents")
 }

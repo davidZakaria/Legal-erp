@@ -10,10 +10,11 @@ import {
   Scale,
   ShieldAlert,
   ClipboardList,
+  Wallet,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { Role } from "@prisma/client";
-
-// Logical properties only (ms-, me-, ps-, pe-, text-start, border-s) for RTL/LTR flip.
 
 const navItems = [
   { href: "/", labelKey: "dashboard", icon: LayoutDashboard, roles: "all" },
@@ -21,6 +22,9 @@ const navItems = [
   { href: "/gafi", labelKey: "gafi", icon: Building2, roles: "all" },
   { href: "/litigation", labelKey: "litigation", icon: Scale, roles: "all" },
   { href: "/prosecutions", labelKey: "prosecutions", icon: ShieldAlert, roles: "all" },
+  { href: "/expenses", labelKey: "expenses", icon: Wallet, roles: "all" },
+  { href: "/library", labelKey: "library", icon: BookOpen, roles: "all" },
+  { href: "/performance", labelKey: "performance", icon: BarChart3, roles: "admin" },
   { href: "/audit-logs", labelKey: "auditLogs", icon: ClipboardList, roles: "admin" },
 ] as const;
 
@@ -43,7 +47,7 @@ export function Sidebar({ userRole }: { userRole: Role }) {
         </h2>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
           if (item.roles === "admin" && !isAdmin) return null;
           const Icon = item.icon;

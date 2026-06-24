@@ -29,6 +29,13 @@ const COURT_SESSION_STATUS: Record<string, LabelConfig> = {
   COMPLETED: { ar: "محجوزة للحكم / منتهية", en: "Reserved / Concluded", tone: "muted" },
 };
 
+const LAWSUIT_STATUS: Record<string, LabelConfig> = {
+  UNDER_REVIEW: { ar: "تحت الفحص والدراسة", en: "Under Review", tone: "muted" },
+  ACTIVE: { ar: "متداولة", en: "Active", tone: "info" },
+  RESERVED: { ar: "محجوزة للحكم", en: "Reserved for Judgment", tone: "warning" },
+  COMPLETED: { ar: "منتهية", en: "Completed", tone: "success" },
+};
+
 const PROSECUTION_STATUS: Record<string, LabelConfig> = {
   POLICE_REPORT: { ar: "قيد التحقيق بالقسم", en: "Under Police Investigation", tone: "muted" },
   IN_COURT: { ar: "متداولة بالمحكمة", en: "In Court", tone: "info" },
@@ -45,7 +52,13 @@ const toneClasses: Record<BadgeTone, string> = {
 };
 
 export function getLegalLabel(
-  category: "contractStatus" | "gafiStatus" | "gafiTaskType" | "courtSessionStatus" | "prosecutionStatus",
+  category:
+    | "contractStatus"
+    | "gafiStatus"
+    | "gafiTaskType"
+    | "courtSessionStatus"
+    | "lawsuitStatus"
+    | "prosecutionStatus",
   value: string,
   locale: string
 ): { label: string; tone: BadgeTone } {
@@ -54,6 +67,7 @@ export function getLegalLabel(
     gafiStatus: GAFI_STATUS,
     gafiTaskType: GAFI_TASK_TYPE,
     courtSessionStatus: COURT_SESSION_STATUS,
+    lawsuitStatus: LAWSUIT_STATUS,
     prosecutionStatus: PROSECUTION_STATUS,
   };
 
@@ -75,7 +89,13 @@ export function LegalBadge({
   pulse = false,
   className,
 }: {
-  category: "contractStatus" | "gafiStatus" | "gafiTaskType" | "courtSessionStatus" | "prosecutionStatus";
+  category:
+    | "contractStatus"
+    | "gafiStatus"
+    | "gafiTaskType"
+    | "courtSessionStatus"
+    | "lawsuitStatus"
+    | "prosecutionStatus";
   value: string;
   locale: string;
   pulse?: boolean;

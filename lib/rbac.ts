@@ -56,3 +56,23 @@ export function canManageProsecutions(role: Role): boolean {
     role === Role.LAWYER
   );
 }
+
+export function canApproveExpenses(role: Role): boolean {
+  return isManagerOrAbove(role);
+}
+
+export function canUploadLibraryDocuments(role: Role): boolean {
+  return isManagerOrAbove(role);
+}
+
+export function canViewPerformanceDashboard(role: Role): boolean {
+  return isManagerOrAbove(role);
+}
+
+export function canRequestExpense(role: Role): boolean {
+  return (
+    role === Role.SUPER_ADMIN ||
+    role === Role.LEGAL_MANAGER ||
+    role === Role.LAWYER
+  );
+}

@@ -29,12 +29,22 @@ import {
 import { cn } from "@/lib/utils";
 import { createNewLawsuit } from "@/app/actions/createNewLawsuit";
 import { useRouter } from "@/i18n/navigation";
+import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
 
 const schema = z.object({
   caseNumber: z.string().min(1),
   year: z.number().int().min(1900).max(2100),
   courtName: z.string().min(1),
   opponentName: z.string().min(1),
+  clientName: z.string().min(1),
+  archiveNumber: z.string().optional(),
+  registrationDate: z.date(),
+  overallStatus: z.enum([
+    "UNDER_REVIEW",
+    "ACTIVE",
+    "RESERVED",
+    "COMPLETED",
+  ]),
   assignedLawyerId: z.string().min(1),
   firstSessionDate: z.date(),
   firstSessionRequiredAction: z.string().min(1),
@@ -50,14 +60,22 @@ export type LawyerOption = {
 export function CreateLawsuitDialog({
   lawyers,
   canCreate,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
 }: {
   lawyers: LawyerOption[];
   canCreate: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
   const t = useTranslations("litigation");
   const tCommon = useTranslations("common");
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,8 +89,22 @@ export function CreateLawsuitDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       year: new Date().getFullYear(),
+      clientName: "NJD",
+      registrationDate: new Date(),
+      overallStatus: "UNDER_REVIEW",
+      archiveNumber: "",
     },
   });
+
+  const resetForm = () => {
+    reset({
+      year: new Date().getFullYear(),
+      clientName: "NJD",
+      registrationDate: new Date(),
+      overallStatus: "UNDER_REVIEW",
+      archiveNumber: "",
+    });
+  };
 
   const onSubmit = async (data: FormData) => {
     setSubmitting(true);
@@ -83,6 +115,10 @@ export function CreateLawsuitDialog({
     formData.set("year", String(data.year));
     formData.set("courtName", data.courtName);
     formData.set("opponentName", data.opponentName);
+    formData.set("clientName", data.clientName);
+    formData.set("archiveNumber", data.archiveNumber ?? "");
+    formData.set("registrationDate", data.registrationDate.toISOString());
+    formData.set("overallStatus", data.overallStatus);
     formData.set("assignedLawyerId", data.assignedLawyerId);
     formData.set("firstSessionDate", data.firstSessionDate.toISOString());
     formData.set("firstSessionRequiredAction", data.firstSessionRequiredAction);
@@ -91,7 +127,7 @@ export function CreateLawsuitDialog({
     setSubmitting(false);
 
     if (result.success) {
-      reset({ year: new Date().getFullYear() });
+      resetForm();
       setOpen(false);
       router.refresh();
       return;
@@ -104,6 +140,7 @@ export function CreateLawsuitDialog({
 
   return (
     <>
+      {!hideTrigger && (
       <Button
         className="gap-2 bg-slate-900 hover:bg-slate-800"
         onClick={() => setOpen(true)}
@@ -111,6 +148,7 @@ export function CreateLawsuitDialog({
         <Plus className="h-4 w-4" />
         {t("addNewLawsuit")}
       </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-slate-200">
@@ -144,6 +182,20 @@ export function CreateLawsuitDialog({
               </div>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="clientName">{t("clientName")}</Label>
+                <Input id="clientName" {...register("clientName")} />
+                {errors.clientName && (
+                  <p className="text-sm text-destructive">{errors.clientName.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="archiveNumber">{t("archiveNumber")}</Label>
+                <Input id="archiveNumber" {...register("archiveNumber")} />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="courtName">{t("courtName")}</Label>
               <Input id="courtName" {...register("courtName")} />
@@ -158,6 +210,66 @@ export function CreateLawsuitDialog({
               {errors.opponentName && (
                 <p className="text-sm text-destructive">{errors.opponentName.message}</p>
               )}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t("registrationDate")}</Label>
+                <Controller
+                  name="registrationDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-start font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="me-2 h-4 w-4" />
+                          {field.value
+                            ? format(field.value, "yyyy-MM-dd")
+                            : t("registrationDate")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                {errors.registrationDate && (
+                  <p className="text-sm text-destructive">{errors.registrationDate.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("overallStatus")}</Label>
+                <Controller
+                  name="overallStatus"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LAWSUIT_STATUS_VALUES.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {t(`status_${status}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -241,11 +353,7 @@ export function CreateLawsuitDialog({
             )}
 
             <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 {tCommon("cancel")}
               </Button>
               <Button

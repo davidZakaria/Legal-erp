@@ -5,9 +5,12 @@ import { Role } from "@prisma/client";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SignOutButton } from "./SignOutButton";
 import { GlobalSearch } from "./GlobalSearch";
+import { QuickAddMenu } from "./QuickAddMenu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
+import type { LawyerOption } from "@/components/litigation/CreateLawsuitDialog";
+import type { LawsuitOption } from "@/components/executions/CreateExecutionRequestDialog";
 
 const roleLabels: Record<Role, { ar: string; en: string }> = {
   SUPER_ADMIN: { ar: "مدير النظام", en: "Super Admin" },
@@ -19,10 +22,14 @@ export function TopNavbar({
   userName,
   userRole,
   locale,
+  lawyers,
+  lawsuits,
 }: {
   userName: string;
   userRole: Role;
   locale: string;
+  lawyers: LawyerOption[];
+  lawsuits: LawsuitOption[];
 }) {
   const t = useTranslations("common");
   const initials = userName
@@ -50,16 +57,17 @@ export function TopNavbar({
         <GlobalSearch />
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <QuickAddMenu userRole={userRole} lawyers={lawyers} lawsuits={lawsuits} />
         <LanguageSwitcher />
-        <Separator orientation="vertical" className="h-8" />
-        <div className="flex items-center gap-3">
+        <Separator orientation="vertical" className="hidden h-8 sm:block" />
+        <div className="hidden items-center gap-3 sm:flex">
           <Avatar className="h-9 w-9 border-2 border-slate-200">
             <AvatarFallback className="bg-slate-100 text-sm font-semibold text-slate-700">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden text-start sm:block">
+          <div className="text-start">
             <p className="text-sm font-medium text-slate-900">{userName}</p>
             <p className="text-xs text-slate-500">{roleLabel}</p>
           </div>

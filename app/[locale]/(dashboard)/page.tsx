@@ -2,12 +2,15 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
-import { LayoutDashboard, Scale, Building2, FileSignature, AlertTriangle } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ExecutiveKpiCards } from "@/components/dashboard/ExecutiveKpiCards";
-import { LawsuitsByCourtChart } from "@/components/dashboard/LawsuitsByCourtChart";
 import { ExportBoardReportButton } from "@/components/dashboard/ExportBoardReportButton";
+import { MaktabiKpiBlocks } from "@/components/dashboard/MaktabiKpiBlocks";
+import { UnifiedAgenda } from "@/components/dashboard/UnifiedAgenda";
+import { GuaranteeRadarCard } from "@/components/dashboard/GuaranteeRadarCard";
 import { isManagerOrAbove } from "@/lib/rbac";
+import { countOverdueItems } from "@/lib/dashboard/agenda";
+import { ExecutionRequestStatus, LawsuitStatus, PowerOfAttorneyStatus } from "@prisma/client";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
@@ -18,27 +21,32 @@ export default async function DashboardPage() {
 
   const [
     activeLawsuits,
-    pendingGafiTasks,
-    activeContractsAggregate,
-    expiringGuarantees,
+    activePoas,
+    pendingExecutions,
+    completedLegalTasks,
+    overdueItems,
+    expiringContracts,
     lawsuitsByCourt,
   ] = await Promise.all([
-    prisma.lawsuit.count(),
-    prisma.gAFITask.count({
-      where: { status: { in: ["PENDING", "IN_PROGRESS"] } },
+    prisma.lawsuit.count({
+      where: { overallStatus: { in: [LawsuitStatus.ACTIVE, LawsuitStatus.UNDER_REVIEW, LawsuitStatus.RESERVED] } },
     }),
-    prisma.contract.aggregate({
-      where: { status: "ACTIVE" },
-      _sum: { totalValue: true },
+    prisma.powerOfAttorney.count({
+      where: { status: PowerOfAttorneyStatus.ACTIVE },
     }),
-    prisma.contract.count({
+    prisma.executionRequest.count({
+      where: { status: ExecutionRequestStatus.PENDING_BAILIFF },
+    }),
+    prisma.legalTask.count({ where: { status: "COMPLETED" } }),
+    countOverdueItems(now),
+    prisma.contract.findMany({
       where: {
         status: "ACTIVE",
-        guaranteeExpiryDate: {
-          gte: now,
-          lte: thirtyDaysFromNow,
-        },
+        guaranteeExpiryDate: { gte: now, lte: thirtyDaysFromNow },
       },
+      include: { project: { select: { name: true } } },
+      orderBy: { guaranteeExpiryDate: "asc" },
+      take: 8,
     }),
     prisma.lawsuit.groupBy({
       by: ["courtName"],
@@ -47,49 +55,23 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const totalContractsValue = Number(activeContractsAggregate._sum.totalValue ?? 0);
-  const formattedContractsValue = new Intl.NumberFormat(
-    locale === "ar" ? "ar-EG" : "en-US",
-    { maximumFractionDigits: 0 }
-  ).format(totalContractsValue);
-
   const chartData = lawsuitsByCourt.map((row) => ({
     courtName: row.courtName,
     count: row._count.id,
   }));
 
-  const canExport = session?.user ? isManagerOrAbove(session.user.role) : false;
+  const guaranteeItems = expiringContracts.map((c) => ({
+    id: c.id,
+    contractorName: c.contractorName,
+    projectName: c.project.name,
+    guaranteeExpiryDate: c.guaranteeExpiryDate.toISOString(),
+  }));
 
-  const kpis = [
-    {
-      key: "lawsuits",
-      title: t("activeLawsuits"),
-      value: String(activeLawsuits),
-      icon: Scale,
-    },
-    {
-      key: "gafi",
-      title: t("pendingGafiTasks"),
-      value: String(pendingGafiTasks),
-      icon: Building2,
-    },
-    {
-      key: "contracts",
-      title: t("activeContractsValue"),
-      value: `${formattedContractsValue} ${t("egp")}`,
-      icon: FileSignature,
-    },
-    {
-      key: "guarantees",
-      title: t("expiringGuarantees"),
-      value: String(expiringGuarantees),
-      icon: AlertTriangle,
-      radar: expiringGuarantees > 0,
-    },
-  ];
+  const canExport = session?.user ? isManagerOrAbove(session.user.role) : false;
+  const dir = locale === "ar" ? "rtl" : "ltr";
 
   return (
-    <div className="space-y-6" dir={locale === "ar" ? "rtl" : "ltr"}>
+    <div className="space-y-6" dir={dir}>
       <PageHeader
         title={t("executiveTitle")}
         description={t("welcome", { name: session?.user?.name ?? "" })}
@@ -97,15 +79,42 @@ export default async function DashboardPage() {
         action={<ExportBoardReportButton canExport={canExport} />}
       />
 
-      <ExecutiveKpiCards kpis={kpis} />
-
-      <LawsuitsByCourtChart
-        data={chartData}
-        title={t("lawsuitsByCourt")}
-        countLabel={t("lawsuitCount")}
-        emptyLabel={t("noChartData")}
-        direction={locale === "ar" ? "rtl" : "ltr"}
+      <MaktabiKpiBlocks
+        assetsTitle={t("blockAssets")}
+        tasksTitle={t("blockTasks")}
+        activeLawsuits={activeLawsuits}
+        activePoas={activePoas}
+        pendingExecutions={pendingExecutions}
+        completedTasks={completedLegalTasks}
+        overdueItems={overdueItems}
+        assetsLabels={{
+          lawsuits: t("activeLawsuits"),
+          poas: t("activePoas"),
+          executions: t("pendingExecutions"),
+        }}
+        tasksLabels={{
+          completed: t("completedTasks"),
+          overdue: t("overdueItems"),
+        }}
       />
+
+      <div className="grid gap-6 lg:grid-cols-10">
+        <div className="lg:col-span-7">
+          <UnifiedAgenda />
+        </div>
+        <div className="lg:col-span-3">
+          <GuaranteeRadarCard
+            title={t("guaranteeRadar")}
+            emptyLabel={t("noExpiringContracts")}
+            items={guaranteeItems}
+            chartTitle={t("lawsuitsByCourt")}
+            chartData={chartData}
+            chartCountLabel={t("lawsuitCount")}
+            chartEmptyLabel={t("noChartData")}
+            direction={dir}
+          />
+        </div>
+      </div>
     </div>
   );
 }

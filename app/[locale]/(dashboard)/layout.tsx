@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { Providers } from "@/components/providers";
@@ -19,6 +21,24 @@ export default async function DashboardLayout({
     redirect("/ar/login");
   }
 
+  const [lawyers, lawsuits] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: Role.LAWYER },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.lawsuit.findMany({
+      select: { id: true, caseNumber: true, year: true },
+      orderBy: [{ year: "desc" }, { caseNumber: "asc" }],
+      take: 100,
+    }),
+  ]);
+
+  const lawsuitOptions = lawsuits.map((l) => ({
+    id: l.id,
+    label: `${l.caseNumber} / ${l.year}`,
+  }));
+
   return (
     <Providers>
       <div className="flex min-h-screen">
@@ -28,6 +48,8 @@ export default async function DashboardLayout({
             userName={user.name ?? ""}
             userRole={user.role}
             locale={locale}
+            lawyers={lawyers}
+            lawsuits={lawsuitOptions}
           />
           <main className="flex-1 overflow-auto bg-slate-50 p-6 md:p-8">
             {children}

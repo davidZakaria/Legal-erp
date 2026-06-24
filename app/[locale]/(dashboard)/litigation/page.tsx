@@ -9,23 +9,55 @@ import { LitigationView } from "@/components/litigation/LitigationView";
 import { CreateLawsuitDialog } from "@/components/litigation/CreateLawsuitDialog";
 import { ImportLawsuitsDialog } from "@/components/litigation/ImportLawsuitsDialog";
 import { TriggerWhatsAppRemindersButton } from "@/components/litigation/TriggerWhatsAppRemindersButton";
+import { buildLawsuitWhere } from "@/lib/litigation/buildLawsuitWhere";
+import type { LawsuitFilters } from "@/lib/litigation/constants";
 
-export default async function LitigationPage() {
+type PageProps = {
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    court?: string;
+    year?: string;
+  }>;
+};
+
+export default async function LitigationPage({ searchParams }: PageProps) {
   const t = await getTranslations("litigation");
   const session = await auth();
+  const params = await searchParams;
 
-  const [lawsuits, lawyers] = await Promise.all([
+  const filters: LawsuitFilters = {
+    q: params.q,
+    status: params.status,
+    court: params.court,
+    year: params.year,
+  };
+
+  const where = buildLawsuitWhere(filters);
+
+  const [lawsuits, lawyers, courtRows, yearRows] = await Promise.all([
     prisma.lawsuit.findMany({
+      where,
       include: {
         assignedLawyer: true,
         courtSessions: { orderBy: { sessionDate: "asc" } },
       },
-      orderBy: { year: "desc" },
+      orderBy: [{ year: "desc" }, { caseNumber: "asc" }],
     }),
     prisma.user.findMany({
       where: { role: Role.LAWYER },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    prisma.lawsuit.findMany({
+      select: { courtName: true },
+      distinct: ["courtName"],
+      orderBy: { courtName: "asc" },
+    }),
+    prisma.lawsuit.findMany({
+      select: { year: true },
+      distinct: ["year"],
+      orderBy: { year: "desc" },
     }),
   ]);
 
@@ -35,6 +67,10 @@ export default async function LitigationPage() {
     year: l.year,
     courtName: l.courtName,
     opponentName: l.opponentName,
+    clientName: l.clientName,
+    archiveNumber: l.archiveNumber,
+    registrationDate: l.registrationDate.toISOString(),
+    overallStatus: l.overallStatus,
     lawyerName: l.assignedLawyer.name,
     sessions: l.courtSessions.map((s) => ({
       id: s.id,
@@ -45,13 +81,11 @@ export default async function LitigationPage() {
     })),
   }));
 
-  const canCreate = session?.user
-    ? canCreateLawsuit(session.user.role)
-    : false;
+  const courts = courtRows.map((row) => row.courtName);
+  const years = yearRows.map((row) => row.year);
 
-  const canTriggerWhatsApp = session?.user
-    ? isManagerOrAbove(session.user.role)
-    : false;
+  const canCreate = session?.user ? canCreateLawsuit(session.user.role) : false;
+  const canTriggerWhatsApp = session?.user ? isManagerOrAbove(session.user.role) : false;
 
   return (
     <div>
@@ -66,7 +100,12 @@ export default async function LitigationPage() {
           </div>
         }
       />
-      <LitigationView lawsuits={data} />
+      <LitigationView
+        lawsuits={data}
+        filters={filters}
+        courts={courts}
+        years={years}
+      />
     </div>
   );
 }

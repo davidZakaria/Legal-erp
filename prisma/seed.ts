@@ -135,6 +135,10 @@ async function main() {
     ],
   });
 
+  await prisma.executionRequest.deleteMany({});
+  await prisma.powerOfAttorney.deleteMany({});
+  await prisma.legalTask.deleteMany({});
+  await prisma.lawsuitAttachment.deleteMany({});
   await prisma.courtSession.deleteMany({});
   await prisma.lawsuit.deleteMany({});
 
@@ -144,6 +148,9 @@ async function main() {
       year: 2025,
       courtName: "محكمة القاهرة الاقتصادية",
       opponentName: "شركة المنافس",
+      clientName: "NJD",
+      archiveNumber: "45",
+      overallStatus: "ACTIVE",
       assignedLawyerId: lawyer.id,
       courtSessions: {
         create: [
@@ -170,6 +177,9 @@ async function main() {
       year: 2024,
       courtName: "محكمة شمال القاهرة",
       opponentName: "مقاول فرعي",
+      clientName: "NJD",
+      archiveNumber: "102",
+      overallStatus: "UNDER_REVIEW",
       assignedLawyerId: lawyer.id,
       courtSessions: {
         create: {
@@ -181,7 +191,85 @@ async function main() {
     },
   });
 
+  await prisma.executionRequest.deleteMany({});
+  await prisma.powerOfAttorney.deleteMany({});
+  await prisma.legalTask.deleteMany({});
+
+  await prisma.legalTask.createMany({
+    data: [
+      {
+        title: "كتابة مذكرة دفاع",
+        description: "إعداد مذكرة للجلسة القادمة",
+        deadline: addDays(new Date(), -2),
+        assignedLawyerId: lawyer.id,
+      },
+      {
+        title: "مراجعة مستندات العقد",
+        deadline: addDays(new Date(), 1),
+        assignedLawyerId: lawyer.id,
+      },
+    ],
+  });
+
+  await prisma.powerOfAttorney.create({
+    data: {
+      poaNumber: "POA-2025-001",
+      clientName: "NJD",
+      type: "عام",
+      expiryDate: addDays(new Date(), 180),
+      assignedLawyerId: lawyer.id,
+    },
+  });
+
+  await prisma.executionRequest.create({
+    data: {
+      lawsuitId: lawsuit1.id,
+      executionType: "إخلاء",
+      assignedLawyerId: lawyer.id,
+    },
+  });
+
+  await prisma.expense.deleteMany({});
+  await prisma.legalDocument.deleteMany({});
   await prisma.prosecution.deleteMany({});
+
+  await prisma.expense.createMany({
+    data: [
+      {
+        amount: 2500,
+        description: "رسوم قيد دعوى",
+        date: new Date(),
+        lawsuitId: lawsuit1.id,
+        requestedById: lawyer.id,
+        status: "PENDING_APPROVAL",
+      },
+      {
+        amount: 800,
+        description: "تصوير مستندات",
+        date: addDays(new Date(), -5),
+        requestedById: lawyer.id,
+        status: "APPROVED",
+      },
+    ],
+  });
+
+  await prisma.legalDocument.createMany({
+    data: [
+      {
+        title: "نموذج عقد مقاولات موحد",
+        category: "CONTRACT_TEMPLATE",
+        fileUrl: "/uploads/library/sample-contract.pdf",
+        uploadedById: legalManager.id,
+      },
+      {
+        title: "صيغة مذكرة دفاع",
+        category: "INTERNAL_MEMO",
+        fileUrl: "/uploads/library/sample-memo.pdf",
+        uploadedById: legalManager.id,
+      },
+    ],
+  });
+
   await prisma.prosecution.createMany({
     data: [
       {

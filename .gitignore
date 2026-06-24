@@ -37,6 +37,12 @@ yarn-error.log*
 # uploads (keep directory, ignore files)
 /uploads/contracts/*
 !/uploads/contracts/.gitkeep
+/public/uploads/lawsuits/*
+!/public/uploads/lawsuits/.gitkeep
+/public/uploads/library/*
+!/public/uploads/library/.gitkeep
+/public/uploads/expenses/*
+!/public/uploads/expenses/.gitkeep
 
 # embedded postgres data
 /data/

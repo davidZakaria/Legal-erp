@@ -41,12 +41,24 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export function CreateGafiTaskDialog({ canCreate }: { canCreate: boolean }) {
+export function CreateGafiTaskDialog({
+  canCreate,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  canCreate: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}) {
   const t = useTranslations("gafi");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,6 +98,7 @@ export function CreateGafiTaskDialog({ canCreate }: { canCreate: boolean }) {
 
   return (
     <>
+      {!hideTrigger && (
       <Button
         className="gap-2 bg-slate-900 hover:bg-slate-800"
         onClick={() => setOpen(true)}
@@ -93,6 +106,7 @@ export function CreateGafiTaskDialog({ canCreate }: { canCreate: boolean }) {
         <Plus className="h-4 w-4" />
         {t("addCorporateTask")}
       </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg border-slate-200">

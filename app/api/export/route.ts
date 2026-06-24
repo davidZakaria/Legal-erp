@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { format } from "date-fns";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLawsuitStatusLabelAr } from "@/lib/litigation/constants";
 import { isManagerOrAbove } from "@/lib/rbac";
 
 export const runtime = "nodejs";
@@ -32,8 +33,12 @@ export async function GET() {
   const lawsuitRows = lawsuits.map((l) => ({
     "رقم الدعوى": l.caseNumber,
     السنة: l.year,
+    الموكل: l.clientName,
     المحكمة: l.courtName,
     "الخصم / المدعى عليه": l.opponentName,
+    "حالة القضية": getLawsuitStatusLabelAr(l.overallStatus),
+    "رقم الحفظ": l.archiveNumber ?? "—",
+    "تاريخ التسجيل": format(l.registrationDate, "yyyy-MM-dd"),
     "المحامي المكلف": l.assignedLawyer.name,
   }));
 

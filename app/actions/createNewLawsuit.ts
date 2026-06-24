@@ -5,7 +5,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canCreateLawsuit } from "@/lib/rbac";
-import { CourtSessionStatus, Role } from "@prisma/client";
+import { CourtSessionStatus, LawsuitStatus, Role } from "@prisma/client";
+import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
 
 export async function createNewLawsuit(formData: FormData) {
   const session = await auth();
@@ -21,6 +22,10 @@ export async function createNewLawsuit(formData: FormData) {
   const yearStr = formData.get("year") as string;
   const courtName = (formData.get("courtName") as string)?.trim();
   const opponentName = (formData.get("opponentName") as string)?.trim();
+  const clientName = ((formData.get("clientName") as string)?.trim()) || "NJD";
+  const archiveNumber = (formData.get("archiveNumber") as string)?.trim() || null;
+  const registrationDateStr = formData.get("registrationDate") as string;
+  const overallStatusRaw = (formData.get("overallStatus") as string)?.trim();
   const assignedLawyerId = formData.get("assignedLawyerId") as string;
   const firstSessionDateStr = formData.get("firstSessionDate") as string;
   const firstSessionRequiredAction = (
@@ -46,6 +51,15 @@ export async function createNewLawsuit(formData: FormData) {
     return { success: false, error: "Invalid session date" };
   }
 
+  const registrationDate = registrationDateStr ? new Date(registrationDateStr) : new Date();
+  if (isNaN(registrationDate.getTime())) {
+    return { success: false, error: "Invalid registration date" };
+  }
+
+  const overallStatus = LAWSUIT_STATUS_VALUES.includes(overallStatusRaw as LawsuitStatus)
+    ? (overallStatusRaw as LawsuitStatus)
+    : LawsuitStatus.UNDER_REVIEW;
+
   const lawyer = await prisma.user.findFirst({
     where: { id: assignedLawyerId, role: Role.LAWYER },
   });
@@ -61,6 +75,10 @@ export async function createNewLawsuit(formData: FormData) {
         year,
         courtName,
         opponentName,
+        clientName,
+        archiveNumber,
+        registrationDate,
+        overallStatus,
         assignedLawyerId,
       },
     });
