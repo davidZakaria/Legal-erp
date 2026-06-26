@@ -14,10 +14,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LegalBadge } from "@/lib/legal-labels";
+import { LegalBadge, ExpertsBadge } from "@/lib/legal-labels";
 import { SessionOutcomeModal } from "./SessionOutcomeModal";
 import { LawsuitAttachmentsButton } from "./LawsuitAttachmentsSheet";
 import { LitigationFilterBar } from "./LitigationFilterBar";
+import { RecordActions } from "@/components/crud/RecordActions";
+import {
+  EditLawsuitDialog,
+  LawsuitFinancialSummary,
+} from "./EditLawsuitDialog";
 import type { LawsuitFilters } from "@/lib/litigation/constants";
 import type { LawsuitExportRow } from "@/lib/litigation/exportLawsuits";
 
@@ -31,6 +36,13 @@ export type LawsuitWithSessions = {
   archiveNumber: string | null;
   registrationDate: string;
   overallStatus: string;
+  isAtExperts: boolean;
+  expertOffice: string | null;
+  expertName: string | null;
+  expertFileNumber: string | null;
+  awardedCompensation: number;
+  judicialFees: number;
+  assignedLawyerId: string;
   lawyerName: string;
   sessions: Array<{
     id: string;
@@ -46,11 +58,25 @@ export function LitigationView({
   filters,
   courts,
   years,
+  canEdit,
+  canDelete = false,
+  expertOfficeLookups = [],
+  onEditFull,
+  onDelete,
+  deleteSuccessMessage,
+  deleteErrorMessage,
 }: {
   lawsuits: LawsuitWithSessions[];
   filters: LawsuitFilters;
   courts: string[];
   years: number[];
+  canEdit: boolean;
+  canDelete?: boolean;
+  expertOfficeLookups?: { id: string; name: string }[];
+  onEditFull?: (lawsuit: LawsuitWithSessions) => void;
+  onDelete?: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteSuccessMessage?: string;
+  deleteErrorMessage?: string;
 }) {
   const t = useTranslations("litigation");
   const locale = useLocale();
@@ -101,6 +127,7 @@ export function LitigationView({
                             value={lawsuit.overallStatus}
                             locale={locale}
                           />
+                          {lawsuit.isAtExperts && <ExpertsBadge locale={locale} />}
                         </div>
                         <CardDescription className="mt-1 text-base font-medium text-slate-700">
                           {lawsuit.courtName}
@@ -110,6 +137,24 @@ export function LitigationView({
                             {t("archiveFile")}: {lawsuit.archiveNumber}
                           </p>
                         )}
+                        {lawsuit.isAtExperts && lawsuit.expertOffice && (
+                          <p className="mt-2 text-sm font-medium text-purple-700">
+                            {t("expertOffice")}: {lawsuit.expertOffice}
+                            {lawsuit.expertFileNumber && (
+                              <> · {t("expertFileNumber")}: {lawsuit.expertFileNumber}</>
+                            )}
+                          </p>
+                        )}
+                        {lawsuit.isAtExperts && lawsuit.expertName && (
+                          <p className="mt-1 text-sm text-purple-600">
+                            {t("expertName")}: {lawsuit.expertName}
+                          </p>
+                        )}
+                        <LawsuitFinancialSummary
+                          awardedCompensation={lawsuit.awardedCompensation}
+                          judicialFees={lawsuit.judicialFees}
+                          locale={locale}
+                        />
                         <p className="mt-2 text-sm text-slate-500">
                           {t("clientName")}: {lawsuit.clientName} · {t("opponent")}:{" "}
                           {lawsuit.opponentName} · {t("assignedLawyer")}: {lawsuit.lawyerName}
@@ -120,7 +165,34 @@ export function LitigationView({
                         </p>
                       </div>
                     </div>
-                    <LawsuitAttachmentsButton lawsuitId={lawsuit.id} caseLabel={caseLabel} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canEdit && onEditFull && (
+                        <RecordActions
+                          onEdit={() => onEditFull(lawsuit)}
+                          onDelete={onDelete ? () => onDelete(lawsuit.id) : undefined}
+                          showDelete={canDelete}
+                          deleteItemName={`${lawsuit.caseNumber}/${lawsuit.year}`}
+                          deleteSuccessMessage={deleteSuccessMessage}
+                          deleteErrorMessage={deleteErrorMessage}
+                        />
+                      )}
+                      <EditLawsuitDialog
+                        lawsuit={{
+                          id: lawsuit.id,
+                          caseLabel,
+                          isAtExperts: lawsuit.isAtExperts,
+                          expertOffice: lawsuit.expertOffice,
+                          expertName: lawsuit.expertName,
+                          expertFileNumber: lawsuit.expertFileNumber,
+                          awardedCompensation: lawsuit.awardedCompensation,
+                          judicialFees: lawsuit.judicialFees,
+                        }}
+                        canEdit={canEdit}
+                        locale={locale}
+                        expertOfficeLookups={expertOfficeLookups}
+                      />
+                      <LawsuitAttachmentsButton lawsuitId={lawsuit.id} caseLabel={caseLabel} />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">

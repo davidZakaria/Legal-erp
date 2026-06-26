@@ -8,11 +8,14 @@ import {
   ExecutionRequestStatus,
   ExpenseStatus,
   LegalDocumentCategory,
+  AssemblyType,
+  ProsecutionStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { addDays, subDays, startOfMonth, subMonths } from "date-fns";
 import fs from "fs/promises";
 import path from "path";
+import { DEFAULT_LAWYER_PERMISSIONS } from "../lib/permissions/constants";
 
 const prisma = new PrismaClient();
 
@@ -51,6 +54,50 @@ async function clearTransactionalData() {
   await prisma.powerOfAttorney.deleteMany({});
   await prisma.contract.deleteMany({});
   await prisma.gAFITask.deleteMany({});
+  await prisma.assemblyArchive.deleteMany({});
+  await prisma.subsidiaryCompany.deleteMany({});
+}
+
+async function seedLookups() {
+  const courts = [
+    "محكمة شمال القاهرة الابتدائية",
+    "محكمة جنوب القاهرة الابتدائية",
+    "محكمة استئناف القاهرة",
+    "المحكمة الاقتصادية",
+  ];
+  const stations = [
+    "قسم شرطة مدينة نصر",
+    "قسم شرطة المعادي",
+    "قسم شرطة المطرية",
+    "قسم شرطة حلوان",
+  ];
+  const expertOffices = [
+    "مكتب خبراء محكمة شمال القاهرة",
+    "مكتب خبراء محكمة استئناف القاهرة",
+    "مكتب الدكتور أحمد الخبير",
+  ];
+
+  for (const name of courts) {
+    await prisma.courtLookup.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  for (const name of stations) {
+    await prisma.policeStationLookup.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+  for (const name of expertOffices) {
+    await prisma.expertOfficeLookup.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
 }
 
 async function main() {
@@ -58,66 +105,143 @@ async function main() {
   const now = new Date();
 
   await seedFiles();
+  await seedLookups();
 
   const superAdmin = await prisma.user.upsert({
     where: { email: "admin@njd.com" },
-    update: { name: "أحمد المدير", passwordHash },
+    update: { name: "أحمد المدير", passwordHash, isActive: true, requiresPasswordChange: false },
     create: {
       name: "أحمد المدير",
       email: "admin@njd.com",
       passwordHash,
       phone: "+201000000001",
       role: Role.SUPER_ADMIN,
+      isActive: true,
+      requiresPasswordChange: false,
     },
   });
 
   const legalManager = await prisma.user.upsert({
     where: { email: "manager@njd.com" },
-    update: { name: "محمد القانوني", passwordHash },
+    update: { name: "محمد القانوني", passwordHash, isActive: true, requiresPasswordChange: false },
     create: {
       name: "محمد القانوني",
       email: "manager@njd.com",
       passwordHash,
       phone: "+201000000002",
       role: Role.LEGAL_MANAGER,
+      isActive: true,
+      requiresPasswordChange: false,
     },
   });
 
   const lawyerSarah = await prisma.user.upsert({
     where: { email: "lawyer@njd.com" },
-    update: { name: "سارة المحامية", passwordHash },
+    update: {
+      name: "سارة المحامية",
+      passwordHash,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
     create: {
       name: "سارة المحامية",
       email: "lawyer@njd.com",
       passwordHash,
       phone: "+201000000003",
       role: Role.LAWYER,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
     },
   });
 
   const lawyerOmar = await prisma.user.upsert({
     where: { email: "omar@njd.com" },
-    update: { name: "عمر الشريف", passwordHash },
+    update: {
+      name: "عمر الشريف",
+      passwordHash,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
     create: {
       name: "عمر الشريف",
       email: "omar@njd.com",
       passwordHash,
       phone: "+201000000004",
       role: Role.LAWYER,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
     },
   });
 
   const lawyerNada = await prisma.user.upsert({
     where: { email: "nada@njd.com" },
-    update: { name: "ندى حسن", passwordHash },
+    update: {
+      name: "ندى حسن",
+      passwordHash,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
     create: {
       name: "ندى حسن",
       email: "nada@njd.com",
       passwordHash,
       phone: "+201000000005",
       role: Role.LAWYER,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
     },
   });
+
+  const lawyerDavid = await prisma.user.upsert({
+    where: { email: "david@newjerseyegypt.com" },
+    update: {
+      name: "David — Test Lawyer",
+      passwordHash,
+      role: Role.LAWYER,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
+    create: {
+      name: "David — Test Lawyer",
+      email: "david@newjerseyegypt.com",
+      passwordHash,
+      phone: "+201000000010",
+      role: Role.LAWYER,
+      permissions: DEFAULT_LAWYER_PERMISSIONS,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
+  });
+
+  const managerDavid = await prisma.user.upsert({
+    where: { email: "davidsamiii97@gmail.com" },
+    update: {
+      name: "David Sami — Test Manager",
+      passwordHash,
+      role: Role.LEGAL_MANAGER,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
+    create: {
+      name: "David Sami — Test Manager",
+      email: "davidsamiii97@gmail.com",
+      passwordHash,
+      phone: "+201000000011",
+      role: Role.LEGAL_MANAGER,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
+  });
+
+  void lawyerDavid;
+  void managerDavid;
 
   const jura = await prisma.project.upsert({
     where: { id: "seed-project-jura" },
@@ -287,16 +411,37 @@ async function main() {
       archiveNumber: "102",
       registrationDate: subMonths(now, 8),
       overallStatus: LawsuitStatus.RESERVED,
+      isAtExperts: true,
+      expertOffice: "خبراء وزارة العدل بالعباسية",
+      expertName: "م/ محمد فتحي",
+      expertFileNumber: "884/2024",
+      awardedCompensation: 250000,
+      judicialFees: 15000,
       assignedLawyerId: lawyerSarah.id,
       courtSessions: {
         create: [
           {
+            sessionDate: addDays(now, 7),
+            sessionType: "EXPERT",
+            requiredAction: "حضور مع الخبير لمعاينة الموقع",
+            status: CourtSessionStatus.PENDING,
+          },
+          {
+            sessionDate: subDays(now, 21),
+            sessionType: "EXPERT",
+            requiredAction: "تسليم مذكرة فنية للخبير",
+            status: CourtSessionStatus.COMPLETED,
+            sessionOutcome: "تم تسليم المذكرة وتحديد جلسة معاينة",
+          },
+          {
             sessionDate: addDays(now, 14),
+            sessionType: "COURT",
             requiredAction: "استلام الحكم وإيداعه",
             status: CourtSessionStatus.PENDING,
           },
           {
             sessionDate: subDays(now, 14),
+            sessionType: "COURT",
             requiredAction: "مرافعة ختامية",
             status: CourtSessionStatus.COMPLETED,
             sessionOutcome: "حجز الدعوى للحكم بجلسة 20/7",
@@ -346,6 +491,8 @@ async function main() {
       archiveNumber: "07",
       registrationDate: subMonths(now, 18),
       overallStatus: LawsuitStatus.COMPLETED,
+      awardedCompensation: 500000,
+      judicialFees: 22000,
       assignedLawyerId: lawyerNada.id,
       courtSessions: {
         create: {
@@ -379,52 +526,99 @@ async function main() {
     },
   });
 
+  // ── Subsidiary companies & assembly archive ──
+  const subsidiaryNjd = await prisma.subsidiaryCompany.create({
+    data: {
+      name: "NJD للتطوير العقاري",
+      commercialRegister: "123456",
+      crExpiryDate: addDays(now, 35),
+      taxCard: "987-654-321",
+      taxCardExpiryDate: addDays(now, 52),
+      boardExpiryDate: addDays(now, 90),
+      capitalPaidDetails: "تم سداد 100%",
+    },
+  });
+
+  const subsidiaryGreen = await prisma.subsidiaryCompany.create({
+    data: {
+      name: "Green Avenue للاستثمار",
+      commercialRegister: "654321",
+      crExpiryDate: addDays(now, 120),
+      taxCard: "111-222-333",
+      taxCardExpiryDate: addDays(now, 25),
+      boardExpiryDate: addDays(now, 40),
+      capitalPaidDetails: "تم سداد 75%",
+    },
+  });
+
+  await prisma.assemblyArchive.createMany({
+    data: [
+      {
+        companyId: subsidiaryNjd.id,
+        type: AssemblyType.ORDINARY,
+        dateHeld: subMonths(now, 6),
+        fileUrl: null,
+      },
+      {
+        companyId: subsidiaryGreen.id,
+        type: AssemblyType.EXTRAORDINARY,
+        dateHeld: subMonths(now, 2),
+        fileUrl: null,
+      },
+    ],
+  });
+
   // ── Prosecutions ──
   await prisma.prosecution.createMany({
     data: [
       {
         caseNumber: "9012",
+        reportNumber: "1245/2025",
         year: 2025,
         policeStation: "قسم شرطة التجمع الخامس",
         clientName: "NJD - مشروع جورا",
         issueType: "شيك بدون رصيد",
-        status: "POLICE_REPORT",
+        status: ProsecutionStatus.POLICE_REPORT,
         assignedLawyerId: lawyerSarah.id,
       },
       {
         caseNumber: "3456",
+        reportNumber: "889/2025",
         year: 2025,
         policeStation: "نيابة 6 أكتوبر",
         clientName: "NJD - مشروع جميلة",
         issueType: "إيصال أمانة",
-        status: "IN_COURT",
+        status: ProsecutionStatus.IN_COURT,
         assignedLawyerId: lawyerOmar.id,
       },
       {
         caseNumber: "7890",
+        reportNumber: "210/2024",
         year: 2024,
         policeStation: "قسم شرطة الجلالة",
         clientName: "NJD - الجلالة",
         issueType: "تعدي على أرض",
-        status: "POLICE_REPORT",
+        status: ProsecutionStatus.POLICE_REPORT,
         assignedLawyerId: lawyerNada.id,
       },
       {
         caseNumber: "1122",
+        reportNumber: "556/2025",
         year: 2025,
         policeStation: "قسم الشيخ زايد",
         clientName: "NJD - Green Avenue",
         issueType: "تبديد",
-        status: "RECONCILED",
+        status: ProsecutionStatus.ARCHIVED_SAVED,
         assignedLawyerId: lawyerSarah.id,
       },
       {
         caseNumber: "5566",
+        reportNumber: "991/2024",
         year: 2024,
         policeStation: "نيابة شمال الجيزة",
         clientName: "مورد حديد - NJD",
         issueType: "نصب واستيلاء",
-        status: "IN_COURT",
+        status: ProsecutionStatus.IN_COURT,
         assignedLawyerId: lawyerOmar.id,
       },
     ],
@@ -665,10 +859,12 @@ async function main() {
   console.log("  lawyer@njd.com     — Lawyer (سارة المحامية)");
   console.log("  omar@njd.com       — Lawyer (عمر الشريف)");
   console.log("  nada@njd.com       — Lawyer (ندى حسن)");
+  console.log("  david@newjerseyegypt.com — Lawyer (email test)");
+  console.log("  davidsamiii97@gmail.com  — Legal Manager (email test)");
   console.log("");
   console.log("Highlights:");
-  console.log("  • 5 lawsuits across 5 courts, 2 with attachments");
-  console.log("  • 5 prosecutions, 5 contracts, 5 GAFI tasks");
+  console.log("  • 5 lawsuits across 5 courts, 2 with attachments (1 at experts)");
+  console.log("  • 5 prosecutions (1 archived), 2 subsidiary companies, 5 GAFI tasks");
   console.log("  • 7 expenses, 8 library docs, 3 POAs, 3 execution requests");
   console.log("  • Overdue sessions/tasks for dashboard agenda + performance KPIs");
 }

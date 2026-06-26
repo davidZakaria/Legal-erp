@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { updateExpenseStatus } from "@/app/actions/updateExpenseStatus";
+import { RecordActions } from "@/components/crud/RecordActions";
 import { cn } from "@/lib/utils";
 
 export type ExpenseRow = {
@@ -25,6 +26,7 @@ export type ExpenseRow = {
   description: string;
   date: string;
   status: string;
+  lawsuitId: string | null;
   lawsuitLabel: string | null;
   requestedByName: string;
   receiptUrl: string | null;
@@ -39,9 +41,21 @@ const statusStyles: Record<string, string> = {
 export function ExpensesDataTable({
   data,
   canApprove,
+  canUpdate = false,
+  canDelete = false,
+  onEdit,
+  onDelete,
+  deleteSuccessMessage,
+  deleteErrorMessage,
 }: {
   data: ExpenseRow[];
   canApprove: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  onEdit?: (row: ExpenseRow) => void;
+  onDelete?: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteSuccessMessage?: string;
+  deleteErrorMessage?: string;
 }) {
   const t = useTranslations("expenses");
   const tCommon = useTranslations("common");
@@ -78,6 +92,9 @@ export function ExpensesDataTable({
                 <TableHead>{t("requestedBy")}</TableHead>
                 <TableHead>{tCommon("status")}</TableHead>
                 {canApprove && <TableHead className="text-center">{tCommon("actions")}</TableHead>}
+                {(canUpdate || canDelete) && (
+                  <TableHead className="text-center">{tCommon("edit")}</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -140,6 +157,19 @@ export function ExpensesDataTable({
                           </Button>
                         )}
                       </div>
+                    </TableCell>
+                  )}
+                  {(canUpdate || canDelete) && (
+                    <TableCell>
+                      <RecordActions
+                        showEdit={canUpdate && row.status === "PENDING_APPROVAL"}
+                        showDelete={canDelete}
+                        onEdit={onEdit ? () => onEdit(row) : undefined}
+                        onDelete={onDelete ? () => onDelete(row.id) : undefined}
+                        deleteItemName={row.description}
+                        deleteSuccessMessage={deleteSuccessMessage}
+                        deleteErrorMessage={deleteErrorMessage}
+                      />
                     </TableCell>
                   )}
                 </TableRow>

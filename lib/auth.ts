@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { userRequiresTwoFactor } from "@/lib/auth-utils";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -10,21 +12,43 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile", type: "text" },
+        skipTurnstile: { label: "Skip Turnstile", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
-        const email = credentials.email as string;
+        const email = (credentials.email as string).trim().toLowerCase();
         const password = credentials.password as string;
+        const turnstileToken = credentials.turnstileToken as string | undefined;
+        const skipTurnstile = credentials.skipTurnstile === "true";
 
         const user = await prisma.user.findUnique({
           where: { email },
         });
 
-        if (!user) {
+        if (!user || user.isActive === false) {
           return null;
+        }
+
+        const needs2FA = userRequiresTwoFactor(user);
+
+        if (needs2FA) {
+          const { hasValidTwoFactorPassCookie, consumeTwoFactorPassCookie } = await import(
+            "@/lib/two-factor-cookie"
+          );
+          const passOk = await hasValidTwoFactorPassCookie(user.id);
+          if (!passOk) {
+            return null;
+          }
+          await consumeTwoFactorPassCookie(user.id);
+        } else if (!skipTurnstile) {
+          const turnstileOk = await verifyTurnstileToken(turnstileToken);
+          if (!turnstileOk) {
+            return null;
+          }
         }
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -37,6 +61,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           email: user.email,
           role: user.role,
+          permissions: user.permissions,
+          requiresPasswordChange: user.requiresPasswordChange,
         };
       },
     }),
@@ -48,17 +74,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/ar/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.permissions = user.permissions ?? [];
+        token.requiresPasswordChange = user.requiresPasswordChange ?? false;
       }
+
+      if (trigger === "update" && session?.requiresPasswordChange !== undefined) {
+        token.requiresPasswordChange = session.requiresPasswordChange as boolean;
+      }
+
+      if (trigger === "update" && token.id && session?.requiresPasswordChange === undefined) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { requiresPasswordChange: true },
+        });
+        if (dbUser) {
+          token.requiresPasswordChange = dbUser.requiresPasswordChange;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as import("@prisma/client").Role;
+        session.user.permissions = (token.permissions as string[]) ?? [];
+        session.user.requiresPasswordChange = Boolean(token.requiresPasswordChange);
       }
       return session;
     },

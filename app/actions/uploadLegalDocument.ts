@@ -11,8 +11,9 @@ import { canUploadLibraryDocuments } from "@/lib/rbac";
 import { LegalDocumentCategory } from "@prisma/client";
 import {
   getLibraryUploadDir,
-  libraryDocumentPublicUrl,
-} from "@/lib/library-uploads";
+  joinStoredUploadFile,
+} from "@/lib/upload-paths";
+import { libraryDocumentPublicUrl } from "@/lib/library-uploads";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const VALID_CATEGORIES = Object.values(LegalDocumentCategory);
@@ -52,7 +53,7 @@ export async function uploadLegalDocument(formData: FormData) {
   const ext = path.extname(file.name) || ".pdf";
   const storedName = `${randomUUID()}${ext}`;
   await writeFile(
-    path.join(uploadDir, storedName),
+    joinStoredUploadFile(uploadDir, storedName),
     Buffer.from(await file.arrayBuffer())
   );
 

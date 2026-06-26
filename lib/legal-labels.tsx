@@ -40,6 +40,12 @@ const PROSECUTION_STATUS: Record<string, LabelConfig> = {
   POLICE_REPORT: { ar: "قيد التحقيق بالقسم", en: "Under Police Investigation", tone: "muted" },
   IN_COURT: { ar: "متداولة بالمحكمة", en: "In Court", tone: "info" },
   RECONCILED: { ar: "تم التصالح / حفظ", en: "Reconciled / Dismissed", tone: "success" },
+  ARCHIVED_SAVED: { ar: "مُحفظ", en: "Archived", tone: "muted" },
+};
+
+const ASSEMBLY_TYPE: Record<string, LabelConfig> = {
+  ORDINARY: { ar: "جمعية عادية", en: "Ordinary Assembly", tone: "default" },
+  EXTRAORDINARY: { ar: "جمعية غير عادية", en: "Extraordinary Assembly", tone: "warning" },
 };
 
 const toneClasses: Record<BadgeTone, string> = {
@@ -58,7 +64,8 @@ export function getLegalLabel(
     | "gafiTaskType"
     | "courtSessionStatus"
     | "lawsuitStatus"
-    | "prosecutionStatus",
+    | "prosecutionStatus"
+    | "assemblyType",
   value: string,
   locale: string
 ): { label: string; tone: BadgeTone } {
@@ -69,6 +76,7 @@ export function getLegalLabel(
     courtSessionStatus: COURT_SESSION_STATUS,
     lawsuitStatus: LAWSUIT_STATUS,
     prosecutionStatus: PROSECUTION_STATUS,
+    assemblyType: ASSEMBLY_TYPE,
   };
 
   const config = maps[category][value];
@@ -95,7 +103,8 @@ export function LegalBadge({
     | "gafiTaskType"
     | "courtSessionStatus"
     | "lawsuitStatus"
-    | "prosecutionStatus";
+    | "prosecutionStatus"
+    | "assemblyType";
   value: string;
   locale: string;
   pulse?: boolean;
@@ -112,6 +121,19 @@ export function LegalBadge({
       )}
     >
       {label}
+    </Badge>
+  );
+}
+
+export function ExpertsBadge({ locale, className }: { locale: string; className?: string }) {
+  return (
+    <Badge
+      className={cn(
+        "border-transparent bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+        className
+      )}
+    >
+      {locale === "ar" ? "متداولة بالخبراء" : "At Experts"}
     </Badge>
   );
 }

@@ -59,3 +59,13 @@ body {
 * {
   border-color: hsl(var(--border));
 }
+
+/* Keep portaled dropdowns/calendars above modal dialogs (z-50). */
+[data-radix-popper-content-wrapper] {
+  z-index: 200;
+}
+
+.radix-select-content,
+.radix-popover-content {
+  z-index: 200;
+}

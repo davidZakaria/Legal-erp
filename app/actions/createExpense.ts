@@ -7,11 +7,12 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canRequestExpense } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import {
   expenseReceiptPublicUrl,
   getExpenseReceiptUploadDir,
 } from "@/lib/expense-uploads";
+import { joinStoredUploadFile } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -21,7 +22,7 @@ export async function createExpense(formData: FormData) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canRequestExpense(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "FINANCIALS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 
@@ -63,7 +64,7 @@ export async function createExpense(formData: FormData) {
     const ext = path.extname(receipt.name) || ".pdf";
     const storedName = `${randomUUID()}${ext}`;
     await writeFile(
-      path.join(uploadDir, storedName),
+      joinStoredUploadFile(uploadDir, storedName),
       Buffer.from(await receipt.arrayBuffer())
     );
     receiptUrl = expenseReceiptPublicUrl(storedName);

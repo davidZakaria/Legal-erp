@@ -19,32 +19,52 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, Mail, MapPin, MoreHorizontal } from "lucide-react";
+import { FileText, Mail, MapPin, MoreHorizontal, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { LegalBadge } from "@/lib/legal-labels";
+import { cn } from "@/lib/utils";
 import {
   BOUNCED_CHECK_ISSUE_TYPE,
+  PROSECUTION_ARCHIVED_STATUS,
   PROSECUTION_STATUSES,
 } from "@/lib/prosecutions/constants";
 import { updateProsecutionStatus } from "@/app/actions/updateProsecutionStatus";
+import { archiveProsecutionReport } from "@/app/actions/archiveProsecutionReport";
+import { ManagerRoleGuard } from "@/components/auth/ManagerRoleGuard";
+import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 import { useRouter } from "@/i18n/navigation";
 
 export type ProsecutionItem = {
   id: string;
   caseNumber: string;
+  reportNumber: string | null;
   year: number;
+  policeStation: string;
   clientName: string;
   issueType: string;
   status: string;
   lawyerName: string;
+  assignedLawyerId: string;
 };
 
 export function ProsecutionsGrouped({
   grouped,
   canManage,
+  canEdit = false,
+  canDelete = false,
+  onEdit,
+  onDelete,
+  deleteSuccessMessage,
+  deleteErrorMessage,
 }: {
   grouped: Record<string, ProsecutionItem[]>;
   canManage: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (item: ProsecutionItem) => void;
+  onDelete?: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteSuccessMessage?: string;
+  deleteErrorMessage?: string;
 }) {
   const t = useTranslations("prosecutions");
   const tLit = useTranslations("litigation");
@@ -54,6 +74,8 @@ export function ProsecutionsGrouped({
   const [isPending, startTransition] = useTransition();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [sendingStation, setSendingStation] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ProsecutionItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const stations = Object.keys(grouped).sort();
 
@@ -93,6 +115,19 @@ export function ProsecutionsGrouped({
     } catch {
       toast.error(t("reportError"));
     }
+  };
+
+  const handleArchiveReport = (prosecutionId: string) => {
+    setUpdatingId(prosecutionId);
+    startTransition(async () => {
+      const result = await archiveProsecutionReport(prosecutionId);
+      setUpdatingId(null);
+      if (result.success) {
+        router.refresh();
+      } else {
+        toast.error(result.error ?? t("updateError"));
+      }
+    });
   };
 
   const handleSendMission = async (station: string, items: ProsecutionItem[]) => {
@@ -175,6 +210,7 @@ export function ProsecutionsGrouped({
                   <TableHeader>
                     <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
                       <TableHead>{tLit("caseNumber")}</TableHead>
+                      <TableHead>{t("reportNumber")}</TableHead>
                       <TableHead>{tLit("year")}</TableHead>
                       <TableHead>{t("clientName")}</TableHead>
                       <TableHead>{t("issueType")}</TableHead>
@@ -188,11 +224,18 @@ export function ProsecutionsGrouped({
                   <TableBody>
                     {items.map((item) => {
                       const isUpdating = updatingId === item.id && isPending;
+                      const isArchived = item.status === PROSECUTION_ARCHIVED_STATUS;
 
                       return (
-                        <TableRow key={item.id} className="bg-white">
+                        <TableRow
+                          key={item.id}
+                          className={cn("bg-white", isArchived && "opacity-60")}
+                        >
                           <TableCell className="font-medium text-slate-900">
                             {item.caseNumber}
+                          </TableCell>
+                          <TableCell className="font-semibold text-slate-800">
+                            {item.reportNumber ?? "—"}
                           </TableCell>
                           <TableCell>{item.year}</TableCell>
                           <TableCell>{item.clientName}</TableCell>
@@ -203,6 +246,7 @@ export function ProsecutionsGrouped({
                               category="prosecutionStatus"
                               value={item.status}
                               locale={locale}
+                              className={isArchived ? "bg-slate-200 text-slate-700" : undefined}
                             />
                           </TableCell>
                           {canManage && (
@@ -219,15 +263,42 @@ export function ProsecutionsGrouped({
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  {PROSECUTION_STATUSES.map((status) =>
-                                    status !== item.status ? (
+                                  {canEdit && onEdit && (
+                                    <DropdownMenuItem onClick={() => onEdit(item)}>
+                                      {tCommon("edit")}
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canDelete && onDelete && (
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => setDeleteTarget(item)}
+                                    >
+                                      {tCommon("delete")}
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!isArchived &&
+                                    PROSECUTION_STATUSES.map((status) =>
+                                      status !== item.status ? (
+                                        <DropdownMenuItem
+                                          key={status}
+                                          onClick={() => handleStatusUpdate(item.id, status)}
+                                        >
+                                          {t(`status_${status}`)}
+                                        </DropdownMenuItem>
+                                      ) : null
+                                    )}
+                                  {!isArchived && (
+                                    <ManagerRoleGuard>
+                                      <>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem
-                                        key={status}
-                                        onClick={() => handleStatusUpdate(item.id, status)}
+                                        onClick={() => handleArchiveReport(item.id)}
                                       >
-                                        {t(`status_${status}`)}
+                                        <Archive className="me-2 h-4 w-4" />
+                                        {t("archiveReport")}
                                       </DropdownMenuItem>
-                                    ) : null
+                                      </>
+                                    </ManagerRoleGuard>
                                   )}
                                   {item.issueType === BOUNCED_CHECK_ISSUE_TYPE && (
                                     <>
@@ -254,6 +325,33 @@ export function ProsecutionsGrouped({
           </section>
         );
       })}
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        itemName={
+          deleteTarget ? `${deleteTarget.caseNumber}/${deleteTarget.year}` : ""
+        }
+        isPending={isDeleting}
+        onConfirm={async () => {
+          if (!deleteTarget || !onDelete) return;
+          setIsDeleting(true);
+          try {
+            const result = await onDelete(deleteTarget.id);
+            if (result.success) {
+              toast.success(deleteSuccessMessage ?? tCommon("deleteSuccess"));
+              setDeleteTarget(null);
+              router.refresh();
+              return;
+            }
+            toast.error(result.error ?? deleteErrorMessage ?? t("updateError"));
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+      />
     </div>
   );
 }

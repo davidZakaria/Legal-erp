@@ -15,10 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  bulkInsertLawsuits,
-  type BulkLawsuitRow,
-} from "@/app/actions/bulkInsertLawsuits";
+import { bulkInsertLawsuits } from "@/app/actions/bulkInsertLawsuits";
+import type { BulkLawsuitRow } from "@/lib/litigation/constants";
 import { useRouter } from "@/i18n/navigation";
 
 const HEADER_MAP: Record<string, keyof BulkLawsuitRow> = {

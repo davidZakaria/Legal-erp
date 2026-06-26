@@ -1,7 +1,11 @@
 import { Role } from "@prisma/client";
 
-export function canViewAuditLogs(role: Role): boolean {
+export function canAccessAdminSection(role: Role): boolean {
   return role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER;
+}
+
+export function canViewAuditLogs(role: Role): boolean {
+  return canAccessAdminSection(role);
 }
 
 export function canDownloadContract(

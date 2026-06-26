@@ -9,10 +9,14 @@ import {
   Building2,
   Scale,
   ShieldAlert,
+  Briefcase,
   ClipboardList,
   Wallet,
   BookOpen,
   BarChart3,
+  ShieldCheck,
+  Users,
+  Settings,
 } from "lucide-react";
 import { Role } from "@prisma/client";
 
@@ -21,11 +25,15 @@ const navItems = [
   { href: "/contracts", labelKey: "contracts", icon: FileSignature, roles: "all" },
   { href: "/gafi", labelKey: "gafi", icon: Building2, roles: "all" },
   { href: "/litigation", labelKey: "litigation", icon: Scale, roles: "all" },
+  { href: "/experts", labelKey: "experts", icon: Briefcase, roles: "all" },
   { href: "/prosecutions", labelKey: "prosecutions", icon: ShieldAlert, roles: "all" },
   { href: "/expenses", labelKey: "expenses", icon: Wallet, roles: "all" },
   { href: "/library", labelKey: "library", icon: BookOpen, roles: "all" },
   { href: "/performance", labelKey: "performance", icon: BarChart3, roles: "admin" },
   { href: "/audit-logs", labelKey: "auditLogs", icon: ClipboardList, roles: "admin" },
+  { href: "/admin/users", labelKey: "adminUsers", icon: Users, roles: "admin" },
+  { href: "/admin/settings", labelKey: "adminSettings", icon: Settings, roles: "admin" },
+  { href: "/admin/security", labelKey: "adminSecurity", icon: ShieldCheck, roles: "superAdmin" },
 ] as const;
 
 export function Sidebar({ userRole }: { userRole: Role }) {
@@ -35,6 +43,7 @@ export function Sidebar({ userRole }: { userRole: Role }) {
 
   const isAdmin =
     userRole === Role.SUPER_ADMIN || userRole === Role.LEGAL_MANAGER;
+  const isSuperAdmin = userRole === Role.SUPER_ADMIN;
 
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-s border-slate-800 bg-slate-900 text-slate-100">
@@ -50,6 +59,7 @@ export function Sidebar({ userRole }: { userRole: Role }) {
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
           if (item.roles === "admin" && !isAdmin) return null;
+          if (item.roles === "superAdmin" && !isSuperAdmin) return null;
           const Icon = item.icon;
           const isActive =
             item.href === "/"

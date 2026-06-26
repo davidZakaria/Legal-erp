@@ -7,7 +7,7 @@ import { canCreateContract } from "@/lib/rbac";
 export const runtime = "nodejs";
 
 const SYSTEM_PROMPT =
-  "You are an expert Egyptian legal assistant for New Jersey Developments. Read this Arabic construction contract. Extract and return ONLY a JSON object with these exact keys: `contractorName` (string), `totalValue` (number), `guaranteeExpiryDate` (YYYY-MM-DD).";
+  "You are an expert Egyptian legal assistant for New Jersey Developments. Read this Arabic construction contract. Extract and return ONLY a JSON object with these exact keys: `contractorName` (string), `totalValue` (number), `guaranteeExpiryDate` (YYYY-MM-DD), `penaltyClause` (string — the full penalty/delay clause text, often under headings like بند الجزاء، غرامة التأخير، شرط جزائي، or similar; return empty string if not found).";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -44,12 +44,14 @@ function parseAnalysisResult(raw: string) {
     typeof json.contractorName === "string" ? json.contractorName.trim() : "";
   const totalValue = Number(json.totalValue);
   const guaranteeExpiryDate = normalizeDateString(json.guaranteeExpiryDate);
+  const penaltyClause =
+    typeof json.penaltyClause === "string" ? json.penaltyClause.trim() : "";
 
   if (!contractorName || !Number.isFinite(totalValue) || totalValue <= 0) {
     throw new Error("Invalid analysis result");
   }
 
-  return { contractorName, totalValue, guaranteeExpiryDate };
+  return { contractorName, totalValue, guaranteeExpiryDate, penaltyClause };
 }
 
 export async function POST(request: NextRequest) {

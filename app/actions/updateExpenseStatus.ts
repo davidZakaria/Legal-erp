@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canApproveExpenses } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { ExpenseStatus } from "@prisma/client";
 
 export async function updateExpenseStatus(
@@ -16,7 +16,7 @@ export async function updateExpenseStatus(
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canApproveExpenses(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "FINANCIALS_UPDATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 

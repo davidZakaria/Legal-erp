@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { FileSignature, CalendarIcon } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createContract } from "@/app/actions/createContract";
+import { updateContract } from "@/app/actions/contractCrud";
+import { useFormResetOnOpen } from "@/lib/hooks/useFormResetOnOpen";
+import { parseIsoDate } from "@/lib/crud/parseInitialDates";
 import { useRouter } from "@/i18n/navigation";
 import type { ContractAnalysisResult } from "@/components/contracts/AnalyzeContractDialog";
 
@@ -48,18 +52,29 @@ export type ProjectOption = {
   location: string;
 };
 
+export type ContractFormInitialData = {
+  id: string;
+  projectId: string;
+  contractorName: string;
+  totalValue: number;
+  penaltyClause: string;
+  guaranteeExpiryDate: string;
+};
+
 export function CreateContractDialog({
   open,
   onOpenChange,
   projects,
   prefill,
   uploadedFile,
+  initialData = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projects: ProjectOption[];
   prefill: ContractAnalysisResult | null;
   uploadedFile: File | null;
+  initialData?: ContractFormInitialData | null;
 }) {
   const t = useTranslations("contracts");
   const tCommon = useTranslations("common");
@@ -68,47 +83,53 @@ export function CreateContractDialog({
   const [error, setError] = useState<string | null>(null);
   const [localFile, setLocalFile] = useState<File | null>(null);
 
+  const isEditMode = Boolean(initialData?.id);
   const effectiveFile = uploadedFile ?? localFile;
+
+  const defaultValues = useMemo(() => ({}), []);
+
+  const formInitial = useMemo(() => {
+    if (initialData) {
+      return {
+        projectId: initialData.projectId,
+        contractorName: initialData.contractorName,
+        totalValue: initialData.totalValue,
+        penaltyClause: initialData.penaltyClause,
+        guaranteeExpiryDate: parseIsoDate(initialData.guaranteeExpiryDate),
+      };
+    }
+    if (prefill) {
+      return {
+        contractorName: prefill.contractorName,
+        totalValue: prefill.totalValue,
+        penaltyClause: prefill.penaltyClause ?? "",
+        guaranteeExpiryDate: parseIsoDate(prefill.guaranteeExpiryDate),
+      };
+    }
+    return null;
+  }, [initialData, prefill]);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues,
+  });
 
   const {
     register,
     handleSubmit,
     control,
-    reset,
-    setValue,
     formState: { errors },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  });
+  } = form;
 
-  useEffect(() => {
-    if (!open) {
-      setLocalFile(null);
-      return;
-    }
+  useFormResetOnOpen(form, open, formInitial, defaultValues);
 
-    reset({
-      projectId: "",
-      contractorName: prefill?.contractorName ?? "",
-      totalValue: prefill?.totalValue,
-      penaltyClause: "",
-      guaranteeExpiryDate:
-        prefill?.guaranteeExpiryDate != null
-          ? new Date(prefill.guaranteeExpiryDate)
-          : undefined,
-    });
-
-    if (prefill) {
-      setValue("contractorName", prefill.contractorName);
-      setValue("totalValue", prefill.totalValue);
-      if (prefill.guaranteeExpiryDate) {
-        setValue("guaranteeExpiryDate", new Date(prefill.guaranteeExpiryDate));
-      }
-    }
-  }, [open, prefill, reset, setValue]);
+  const handleOpenChange = (next: boolean) => {
+    if (!next) setLocalFile(null);
+    onOpenChange(next);
+  };
 
   const onSubmit = async (data: FormData) => {
-    if (!effectiveFile) {
+    if (!isEditMode && !effectiveFile) {
       setError(t("pdfRequired"));
       return;
     }
@@ -122,22 +143,28 @@ export function CreateContractDialog({
     formData.set("totalValue", String(data.totalValue));
     formData.set("penaltyClause", data.penaltyClause);
     formData.set("guaranteeExpiryDate", data.guaranteeExpiryDate.toISOString());
-    formData.set("file", effectiveFile);
+    if (effectiveFile) formData.set("file", effectiveFile);
 
-    const result = await createContract(formData);
+    const result = isEditMode
+      ? await updateContract(initialData!.id, formData)
+      : await createContract(formData);
+
     setSubmitting(false);
 
     if (result.success) {
-      onOpenChange(false);
+      toast.success(tCommon("saveSuccess"));
+      setLocalFile(null);
+      handleOpenChange(false);
       router.refresh();
       return;
     }
 
     setError(result.error ?? t("createError"));
+    toast.error(result.error ?? t("createError"));
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-slate-200">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -145,9 +172,15 @@ export function CreateContractDialog({
               <FileSignature className="h-5 w-5" />
             </div>
             <div className="text-start">
-              <DialogTitle className="text-slate-900">{t("createTitle")}</DialogTitle>
+              <DialogTitle className="text-slate-900">
+                {isEditMode ? t("editTitle") : t("createTitle")}
+              </DialogTitle>
               <DialogDescription>
-                {prefill ? t("createDescriptionPrefilled") : t("createDescription")}
+                {isEditMode
+                  ? t("editDescription")
+                  : prefill
+                    ? t("createDescriptionPrefilled")
+                    : t("createDescription")}
               </DialogDescription>
             </div>
           </div>
@@ -252,7 +285,10 @@ export function CreateContractDialog({
             </p>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="contract-file">{t("uploadPdf")}</Label>
+              <Label htmlFor="contract-file">
+                {t("uploadPdf")}
+                {isEditMode ? ` (${tCommon("optional")})` : ""}
+              </Label>
               <Input
                 id="contract-file"
                 type="file"
@@ -269,7 +305,7 @@ export function CreateContractDialog({
           )}
 
           <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {tCommon("cancel")}
             </Button>
             <Button
@@ -277,7 +313,11 @@ export function CreateContractDialog({
               disabled={submitting}
               className="bg-slate-900 hover:bg-slate-800"
             >
-              {submitting ? tCommon("loading") : t("saveToDatabase")}
+              {submitting
+                ? tCommon("loading")
+                : isEditMode
+                  ? tCommon("save")
+                  : t("saveToDatabase")}
             </Button>
           </div>
         </form>

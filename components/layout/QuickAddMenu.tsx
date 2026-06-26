@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CreateLawsuitDialog, type LawyerOption } from "@/components/litigation/CreateLawsuitDialog";
+import { CreateLawsuitDialog, type LawyerOption, type LookupOption } from "@/components/litigation/CreateLawsuitDialog";
 import { CreateGafiTaskDialog } from "@/components/gafi/CreateGafiTaskDialog";
 import { CreatePowerOfAttorneyDialog } from "@/components/poa/CreatePowerOfAttorneyDialog";
 import { CreateLegalTaskDialog } from "@/components/legal-tasks/CreateLegalTaskDialog";
@@ -41,10 +41,14 @@ export function QuickAddMenu({
   userRole,
   lawyers,
   lawsuits,
+  courtLookups,
+  expertOfficeLookups,
 }: {
   userRole: Role;
   lawyers: LawyerOption[];
   lawsuits: LawsuitOption[];
+  courtLookups: LookupOption[];
+  expertOfficeLookups: LookupOption[];
 }) {
   const t = useTranslations("quickAdd");
   const canCreate = isManagerOrAbove(userRole);
@@ -94,6 +98,8 @@ export function QuickAddMenu({
 
       <CreateLawsuitDialog
         lawyers={lawyers}
+        courtLookups={courtLookups}
+        expertOfficeLookups={expertOfficeLookups}
         canCreate={canCreate}
         open={activeDialog === "lawsuit"}
         onOpenChange={(open) => !open && close()}

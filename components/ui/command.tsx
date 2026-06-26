@@ -25,7 +25,7 @@ function CommandDialog({
 }: React.ComponentProps<typeof Dialog>) {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg sm:max-w-xl">
+      <DialogContent closeOnOutsideClick className="overflow-hidden p-0 shadow-lg sm:max-w-xl">
         <DialogTitle className="sr-only">Search</DialogTitle>
         <Command
           shouldFilter={false}

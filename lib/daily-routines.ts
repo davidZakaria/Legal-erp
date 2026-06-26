@@ -163,11 +163,105 @@ export async function processGuaranteeExpiryAlerts() {
   };
 }
 
+export async function processCorporateGovernanceAlerts() {
+  const now = new Date();
+  const in45Days = addDays(now, 45);
+
+  const subsidiaries = await prisma.subsidiaryCompany.findMany({
+    where: {
+      OR: [
+        { crExpiryDate: { gte: now, lte: in45Days } },
+        { taxCardExpiryDate: { gte: now, lte: in45Days } },
+        { boardExpiryDate: { gte: now, lte: in45Days } },
+      ],
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (!subsidiaries.length) {
+    return {
+      sent: false,
+      total: 0,
+      companies: [] as string[],
+      message: "No expiring corporate documents found",
+    };
+  }
+
+  const managerEmails = await getManagerEmails();
+
+  const listItems = subsidiaries
+    .map((company) => {
+      const expiring: string[] = [];
+      if (
+        company.crExpiryDate &&
+        company.crExpiryDate >= now &&
+        company.crExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `<strong>السجل التجاري</strong> — ينتهي ${company.crExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+      if (
+        company.taxCardExpiryDate &&
+        company.taxCardExpiryDate >= now &&
+        company.taxCardExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `<strong>البطاقة الضريبية</strong> — تنتهي ${company.taxCardExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+      if (
+        company.boardExpiryDate &&
+        company.boardExpiryDate >= now &&
+        company.boardExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `<strong>مجلس الإدارة</strong> — ينتهي ${company.boardExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+
+      if (!expiring.length) return "";
+
+      return `<li style="margin-bottom: 12px;">
+        <strong>${company.name}</strong>
+        <ul style="margin: 6px 0 0; padding-right: 20px;">${expiring.map((item) => `<li>${item}</li>`).join("")}</ul>
+      </li>`;
+    })
+    .filter(Boolean)
+    .join("");
+
+  if (!listItems) {
+    return {
+      sent: false,
+      total: 0,
+      companies: [] as string[],
+      message: "No expiring corporate documents found",
+    };
+  }
+
+  const alertTitle =
+    "🚨 إنذار حوكمة: اقتراب موعد تجديد [سجل/بطاقة/مجلس] لشركة تابعة";
+  const details = `
+    <p style="margin: 0 0 16px;">يوجد <strong>${subsidiaries.length}</strong> شركة/شركات تابعة بمستندات تنتهي خلال 45 يوماً:</p>
+    <ul style="margin: 0; padding-right: 24px;">${listItems}</ul>
+  `;
+
+  const sendResult = await sendCriticalAlertEmail(managerEmails, alertTitle, details);
+
+  return {
+    sent: sendResult.success,
+    total: subsidiaries.length,
+    companies: subsidiaries.map((company) => company.id),
+    message: sendResult.message,
+  };
+}
+
 export async function runDailyRoutines() {
-  const [reminders, guarantees] = await Promise.all([
+  const [reminders, guarantees, corporate] = await Promise.all([
     processDailySessionReminders(),
     processGuaranteeExpiryAlerts(),
+    processCorporateGovernanceAlerts(),
   ]);
 
-  return { reminders, guarantees };
+  return { reminders, guarantees, corporate };
 }

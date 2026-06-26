@@ -2,13 +2,13 @@
 
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canCreateContract } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { getUploadDir } from "@/lib/uploads";
+import { joinStoredUploadFile } from "@/lib/upload-paths";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -18,7 +18,7 @@ export async function createContract(formData: FormData) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canCreateContract(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "CONTRACTS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 
@@ -58,7 +58,7 @@ export async function createContract(formData: FormData) {
 
   const uploadDir = getUploadDir();
   const safeName = `${randomUUID()}.pdf`;
-  const filePath = path.join(uploadDir, safeName);
+  const filePath = joinStoredUploadFile(uploadDir, safeName);
 
   try {
     await mkdir(uploadDir, { recursive: true });

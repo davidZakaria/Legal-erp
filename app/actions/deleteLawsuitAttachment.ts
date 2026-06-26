@@ -5,12 +5,17 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
+import { isManagerOrAbove } from "@/lib/rbac";
 import { resolveLawsuitAttachmentPath } from "@/lib/lawsuit-uploads";
 
 export async function deleteLawsuitAttachment(attachmentId: string, lawsuitId: string) {
   const session = await auth();
   if (!session?.user) {
     return { success: false, error: "Unauthorized" };
+  }
+
+  if (!isManagerOrAbove(session.user.role)) {
+    return { success: false, error: "Forbidden" };
   }
 
   const attachment = await prisma.lawsuitAttachment.findFirst({

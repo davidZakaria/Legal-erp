@@ -4,16 +4,9 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canCreateLawsuit } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { Role } from "@prisma/client";
-
-export type BulkLawsuitRow = {
-  caseNumber: string;
-  year: number;
-  courtName: string;
-  opponentName: string;
-  assignedLawyerEmail: string;
-};
+import type { BulkLawsuitRow } from "@/lib/litigation/constants";
 
 export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
   const session = await auth();
@@ -21,7 +14,7 @@ export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canCreateLawsuit(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "LAWSUITS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 

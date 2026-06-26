@@ -4,10 +4,19 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canCreateLawsuit } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { CourtSessionStatus, LawsuitStatus, Role } from "@prisma/client";
-import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
+import {
+  LAWSUIT_STATUS_VALUES,
+  SESSION_TYPE_COURT,
+  SESSION_TYPE_EXPERT,
+} from "@/lib/litigation/constants";
 import { notifyAssignmentNonBlocking } from "@/lib/email";
+
+function parseFinancial(value: FormDataEntryValue | null): number {
+  const num = value ? Number(value) : 0;
+  return Number.isFinite(num) && num >= 0 ? num : 0;
+}
 
 export async function createNewLawsuit(formData: FormData) {
   const session = await auth();
@@ -15,7 +24,7 @@ export async function createNewLawsuit(formData: FormData) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canCreateLawsuit(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "LAWSUITS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 
@@ -33,6 +42,13 @@ export async function createNewLawsuit(formData: FormData) {
     formData.get("firstSessionRequiredAction") as string
   )?.trim();
 
+  const isAtExperts = formData.get("isAtExperts") === "true";
+  const expertOffice = (formData.get("expertOffice") as string)?.trim() || null;
+  const expertName = (formData.get("expertName") as string)?.trim() || null;
+  const expertFileNumber = (formData.get("expertFileNumber") as string)?.trim() || null;
+  const awardedCompensation = parseFinancial(formData.get("awardedCompensation"));
+  const judicialFees = parseFinancial(formData.get("judicialFees"));
+
   const year = parseInt(yearStr, 10);
 
   if (!caseNumber || !courtName || !opponentName || !assignedLawyerId) {
@@ -45,6 +61,10 @@ export async function createNewLawsuit(formData: FormData) {
 
   if (!firstSessionDateStr || !firstSessionRequiredAction) {
     return { success: false, error: "First session details are required" };
+  }
+
+  if (isAtExperts && (!expertOffice || !expertName || !expertFileNumber)) {
+    return { success: false, error: "Expert office, name, and file number are required" };
   }
 
   const firstSessionDate = new Date(firstSessionDateStr);
@@ -69,6 +89,8 @@ export async function createNewLawsuit(formData: FormData) {
     return { success: false, error: "Invalid assigned lawyer" };
   }
 
+  const sessionType = isAtExperts ? SESSION_TYPE_EXPERT : SESSION_TYPE_COURT;
+
   const lawsuit = await prisma.$transaction(async (tx) => {
     const created = await tx.lawsuit.create({
       data: {
@@ -81,6 +103,12 @@ export async function createNewLawsuit(formData: FormData) {
         registrationDate,
         overallStatus,
         assignedLawyerId,
+        isAtExperts,
+        expertOffice: isAtExperts ? expertOffice : null,
+        expertName: isAtExperts ? expertName : null,
+        expertFileNumber: isAtExperts ? expertFileNumber : null,
+        awardedCompensation,
+        judicialFees,
       },
     });
 
@@ -89,6 +117,7 @@ export async function createNewLawsuit(formData: FormData) {
         lawsuitId: created.id,
         sessionDate: firstSessionDate,
         requiredAction: firstSessionRequiredAction,
+        sessionType,
         status: CourtSessionStatus.PENDING,
         isReminderSent: false,
       },
@@ -101,12 +130,16 @@ export async function createNewLawsuit(formData: FormData) {
 
   notifyAssignmentNonBlocking(
     lawyer,
-    "دعوى جديدة",
-    `تم تكليفك للتو بمتابعة دعوى رقم ${caseNumber} لسنة ${year} — ${courtName} ضد ${opponentName}.`
+    isAtExperts ? "دعوى محالة للخبراء" : "دعوى جديدة",
+    isAtExperts
+      ? `تم تكليفك بمتابعة دعوى رقم ${caseNumber}/${year} — محالة لـ ${expertOffice} (ملف ${expertFileNumber}).`
+      : `تم تكليفك للتو بمتابعة دعوى رقم ${caseNumber} لسنة ${year} — ${courtName} ضد ${opponentName}.`
   );
 
   revalidatePath("/ar/litigation");
   revalidatePath("/en/litigation");
+  revalidatePath("/ar/experts");
+  revalidatePath("/en/experts");
 
   return { success: true, lawsuitId: lawsuit.id };
 }

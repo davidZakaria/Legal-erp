@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { Providers } from "@/components/providers";
+import { getAllLookups } from "@/lib/lookups";
 
 export default async function DashboardLayout({
   children,
@@ -21,9 +22,9 @@ export default async function DashboardLayout({
     redirect("/ar/login");
   }
 
-  const [lawyers, lawsuits] = await Promise.all([
+  const [lawyers, lawsuits, lookups] = await Promise.all([
     prisma.user.findMany({
-      where: { role: Role.LAWYER },
+      where: { role: Role.LAWYER, isActive: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
       orderBy: [{ year: "desc" }, { caseNumber: "asc" }],
       take: 100,
     }),
+    getAllLookups(),
   ]);
 
   const lawsuitOptions = lawsuits.map((l) => ({
@@ -50,6 +52,8 @@ export default async function DashboardLayout({
             locale={locale}
             lawyers={lawyers}
             lawsuits={lawsuitOptions}
+            courtLookups={lookups.courts}
+            expertOfficeLookups={lookups.expertOffices}
           />
           <main className="flex-1 overflow-auto bg-slate-50 p-6 md:p-8">
             {children}

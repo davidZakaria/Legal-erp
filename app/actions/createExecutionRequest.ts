@@ -7,8 +7,6 @@ import { logActivity } from "@/lib/auditLogger";
 import { isManagerOrAbove } from "@/lib/rbac";
 import { Role } from "@prisma/client";
 
-const EXECUTION_TYPES = ["إخلاء", "حجز", "بيع بالمزاد"] as const;
-
 export async function createExecutionRequest(formData: FormData) {
   const session = await auth();
   if (!session?.user) {
@@ -49,5 +47,3 @@ export async function createExecutionRequest(formData: FormData) {
 
   return { success: true, requestId: request.id };
 }
-
-export { EXECUTION_TYPES };

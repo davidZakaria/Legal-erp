@@ -1,59 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { signIn } from "next-auth/react";
-import { useRouter } from "@/i18n/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "@/i18n/navigation";
+import { initiateLogin } from "@/app/actions/auth/login";
+import { completeSignIn } from "@/lib/auth-client";
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
+const PENDING_LOGIN_KEY = "njd-pending-login";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dbDown, setDbDown] = useState(false);
   const [loading, setLoading] = useState(false);
+  const turnstileRequired =
+    typeof window !== "undefined"
+      ? Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+      : false;
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-  });
+  useEffect(() => {
+    fetch("/api/health/db")
+      .then((res) => setDbDown(!res.ok))
+      .catch(() => setDbDown(true));
+  }, []);
 
-  const onSubmit = async (data: LoginForm) => {
-    setLoading(true);
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
 
-    const result = await signIn("credentials", {
-      email: data.email,
-      password: data.password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
       setError(t("loginError"));
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    if (turnstileRequired && !turnstileToken) {
+      setError(t("turnstileRequired"));
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const initResult = await initiateLogin(trimmedEmail, password, turnstileToken);
+
+      if (!initResult.success) {
+        setError(initResult.error ?? t("loginError"));
+        return;
+      }
+
+      if (initResult.requires2FA) {
+        sessionStorage.setItem(
+          PENDING_LOGIN_KEY,
+          JSON.stringify({
+            email: trimmedEmail,
+            password,
+            exp: Date.now() + 10 * 60 * 1000,
+          })
+        );
+        router.push(`/2fa?email=${encodeURIComponent(initResult.email)}`);
+        return;
+      }
+
+      const signInResult = await completeSignIn({
+        email: trimmedEmail,
+        password,
+        turnstileToken,
+        router,
+      });
+
+      if (!signInResult.success) {
+        setError(t("loginError"));
+      }
+    } catch {
+      setError(t("loginError"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,33 +103,51 @@ export default function LoginPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">{t("email")}</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 autoComplete="email"
                 className="h-10"
-                {...register("email")}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">{t("password")}</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 autoComplete="current-password"
                 className="h-10"
-                {...register("password")}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={6}
               />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
-              )}
             </div>
+
+            {turnstileRequired && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center">
+                <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => setTurnstileToken(null)}
+                />
+              </div>
+            )}
+
+            {dbDown && (
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+                {t("dbUnavailable")}
+              </p>
+            )}
             {error && (
               <p className="rounded-md bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
                 {error}
@@ -104,7 +156,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="h-10 w-full bg-slate-900 hover:bg-slate-800"
-              disabled={loading}
+              disabled={loading || dbDown || (turnstileRequired && !turnstileToken)}
             >
               {loading ? tCommon("loading") : t("loginButton")}
             </Button>

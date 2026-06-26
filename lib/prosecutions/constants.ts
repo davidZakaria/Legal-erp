@@ -13,4 +13,6 @@ export const PROSECUTION_STATUSES = [
   "RECONCILED",
 ] as const;
 
+export const PROSECUTION_ARCHIVED_STATUS = "ARCHIVED_SAVED" as const;
+
 export type ProsecutionStatus = (typeof PROSECUTION_STATUSES)[number];

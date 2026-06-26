@@ -75,6 +75,7 @@ export async function logSessionOutcome(formData: FormData, sessionId: string) {
           lawsuitId: courtSession.lawsuitId,
           sessionDate: nextSessionDate,
           requiredAction: nextRequiredAction.trim(),
+          sessionType: courtSession.sessionType,
           status: CourtSessionStatus.PENDING,
           isReminderSent: false,
         },

@@ -33,5 +33,10 @@ export async function GET(request: NextRequest) {
       total: result.guarantees.total,
       message: result.guarantees.message,
     },
+    corporate: {
+      sent: result.corporate.sent,
+      total: result.corporate.total,
+      message: result.corporate.message,
+    },
   });
 }

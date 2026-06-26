@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ProsecutionStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
@@ -28,7 +29,7 @@ export async function updateProsecutionStatus(prosecutionId: string, newStatus: 
 
   await prisma.prosecution.update({
     where: { id: prosecutionId },
-    data: { status: newStatus },
+    data: { status: newStatus as ProsecutionStatus },
   });
 
   await logActivity(session.user.id, "UPDATE_STATUS", "Prosecution", prosecutionId);

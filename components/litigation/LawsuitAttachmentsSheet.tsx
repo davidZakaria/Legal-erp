@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { deleteLawsuitAttachment } from "@/app/actions/deleteLawsuitAttachment";
+import { ManagerRoleGuard } from "@/components/auth/ManagerRoleGuard";
+import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
 
 type Attachment = {
   id: string;
@@ -38,7 +40,8 @@ export function LawsuitAttachmentsSheet({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Attachment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAttachments = useCallback(async () => {
     setLoading(true);
@@ -92,18 +95,22 @@ export function LawsuitAttachmentsSheet({
     }
   };
 
-  const handleDelete = async (attachmentId: string) => {
-    setDeletingId(attachmentId);
-    const result = await deleteLawsuitAttachment(attachmentId, lawsuitId);
-    setDeletingId(null);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
 
-    if (result.success) {
-      toast.success(t("attachmentDeleteSuccess"));
-      setAttachments((current) => current.filter((item) => item.id !== attachmentId));
-      return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteLawsuitAttachment(deleteTarget.id, lawsuitId);
+      if (result.success) {
+        toast.success(t("attachmentDeleteSuccess"));
+        setAttachments((current) => current.filter((item) => item.id !== deleteTarget.id));
+        setDeleteTarget(null);
+        return;
+      }
+      toast.error(result.error ?? t("attachmentDeleteError"));
+    } finally {
+      setIsDeleting(false);
     }
-
-    toast.error(result.error ?? t("attachmentDeleteError"));
   };
 
   return (
@@ -174,26 +181,34 @@ export function LawsuitAttachmentsSheet({
                         <Eye className="h-4 w-4" />
                       </a>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      disabled={deletingId === attachment.id}
-                      onClick={() => handleDelete(attachment.id)}
-                      aria-label={t("attachmentDelete")}
-                    >
-                      {deletingId === attachment.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
+                    <ManagerRoleGuard>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        disabled={isDeleting}
+                        onClick={() => setDeleteTarget(attachment)}
+                        aria-label={t("attachmentDelete")}
+                      >
                         <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+                      </Button>
+                    </ManagerRoleGuard>
                   </div>
                 </li>
               ))}
             </ul>
           )}
         </div>
+
+        <DeleteConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          itemName={deleteTarget?.fileName ?? ""}
+          isPending={isDeleting}
+          onConfirm={handleConfirmDelete}
+        />
       </SheetContent>
     </Sheet>
   );

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageProsecutions } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { PROSECUTION_ISSUE_TYPES } from "@/lib/prosecutions/constants";
 import { notifyAssignmentNonBlocking } from "@/lib/email";
 
@@ -14,11 +14,12 @@ export async function createProsecution(formData: FormData) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canManageProsecutions(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "PROSECUTIONS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 
   const caseNumber = (formData.get("caseNumber") as string)?.trim();
+  const reportNumber = (formData.get("reportNumber") as string)?.trim() || null;
   const yearStr = formData.get("year") as string;
   const policeStation = (formData.get("policeStation") as string)?.trim();
   const clientName = (formData.get("clientName") as string)?.trim();
@@ -46,6 +47,7 @@ export async function createProsecution(formData: FormData) {
   const prosecution = await prisma.prosecution.create({
     data: {
       caseNumber,
+      reportNumber,
       year,
       policeStation,
       clientName,

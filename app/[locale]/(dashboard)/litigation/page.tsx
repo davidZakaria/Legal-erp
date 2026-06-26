@@ -1,15 +1,19 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canCreateLawsuit, isManagerOrAbove } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
+import { getAllLookups } from "@/lib/lookups";
 import { Role } from "@prisma/client";
 import { Scale } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { LitigationView } from "@/components/litigation/LitigationView";
+import { LitigationModule } from "@/components/litigation/LitigationModule";
 import { CreateLawsuitDialog } from "@/components/litigation/CreateLawsuitDialog";
 import { ImportLawsuitsDialog } from "@/components/litigation/ImportLawsuitsDialog";
 import { TriggerWhatsAppRemindersButton } from "@/components/litigation/TriggerWhatsAppRemindersButton";
 import { buildLawsuitWhere } from "@/lib/litigation/buildLawsuitWhere";
+import { SESSION_TYPE_COURT } from "@/lib/litigation/constants";
 import type { LawsuitFilters } from "@/lib/litigation/constants";
 
 type PageProps = {
@@ -23,6 +27,7 @@ type PageProps = {
 
 export default async function LitigationPage({ searchParams }: PageProps) {
   const t = await getTranslations("litigation");
+  const locale = await getLocale();
   const session = await auth();
   const params = await searchParams;
 
@@ -33,9 +38,16 @@ export default async function LitigationPage({ searchParams }: PageProps) {
     year: params.year,
   };
 
+  if (
+    session?.user &&
+    !(await hasPermission(session.user.id, "LAWSUITS_READ", session.user.role))
+  ) {
+    redirect({ href: "/", locale });
+  }
+
   const where = buildLawsuitWhere(filters);
 
-  const [lawsuits, lawyers, courtRows, yearRows] = await Promise.all([
+  const [lawsuits, lawyers, courtRows, yearRows, lookups] = await Promise.all([
     prisma.lawsuit.findMany({
       where,
       include: {
@@ -59,6 +71,7 @@ export default async function LitigationPage({ searchParams }: PageProps) {
       distinct: ["year"],
       orderBy: { year: "desc" },
     }),
+    getAllLookups(),
   ]);
 
   const data = lawsuits.map((l) => ({
@@ -71,8 +84,17 @@ export default async function LitigationPage({ searchParams }: PageProps) {
     archiveNumber: l.archiveNumber,
     registrationDate: l.registrationDate.toISOString(),
     overallStatus: l.overallStatus,
+    isAtExperts: l.isAtExperts,
+    expertOffice: l.expertOffice,
+    expertName: l.expertName,
+    expertFileNumber: l.expertFileNumber,
+    awardedCompensation: l.awardedCompensation ?? 0,
+    judicialFees: l.judicialFees ?? 0,
+    assignedLawyerId: l.assignedLawyerId,
     lawyerName: l.assignedLawyer.name,
-    sessions: l.courtSessions.map((s) => ({
+    sessions: l.courtSessions
+      .filter((s) => s.sessionType === SESSION_TYPE_COURT)
+      .map((s) => ({
       id: s.id,
       sessionDate: s.sessionDate.toISOString(),
       requiredAction: s.requiredAction,
@@ -81,11 +103,21 @@ export default async function LitigationPage({ searchParams }: PageProps) {
     })),
   }));
 
-  const courts = courtRows.map((row) => row.courtName);
+  const courts = Array.from(
+    new Set([
+      ...lookups.courts.map((c) => c.name),
+      ...courtRows.map((row) => row.courtName),
+    ])
+  ).sort((a, b) => a.localeCompare(b, "ar"));
   const years = yearRows.map((row) => row.year);
 
-  const canCreate = session?.user ? canCreateLawsuit(session.user.role) : false;
-  const canTriggerWhatsApp = session?.user ? isManagerOrAbove(session.user.role) : false;
+  const user = session!.user;
+  const canCreate =
+    (await hasPermission(user.id, "LAWSUITS_CREATE", user.role)) ||
+    canCreateLawsuit(user.role);
+  const canEdit = isManagerOrAbove(user.role);
+  const canDelete = isManagerOrAbove(user.role);
+  const canTriggerWhatsApp = isManagerOrAbove(user.role);
 
   return (
     <div>
@@ -96,15 +128,25 @@ export default async function LitigationPage({ searchParams }: PageProps) {
           <div className="flex flex-wrap items-center gap-2">
             <TriggerWhatsAppRemindersButton canTrigger={canTriggerWhatsApp} />
             <ImportLawsuitsDialog canImport={canCreate} />
-            <CreateLawsuitDialog lawyers={lawyers} canCreate={canCreate} />
+            <CreateLawsuitDialog
+              lawyers={lawyers}
+              courtLookups={lookups.courts}
+              expertOfficeLookups={lookups.expertOffices}
+              canCreate={canCreate}
+            />
           </div>
         }
       />
-      <LitigationView
+      <LitigationModule
         lawsuits={data}
         filters={filters}
         courts={courts}
         years={years}
+        lawyers={lawyers}
+        courtLookups={lookups.courts}
+        expertOfficeLookups={lookups.expertOffices}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
     </div>
   );

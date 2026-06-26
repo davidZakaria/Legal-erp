@@ -10,7 +10,7 @@ import { BroadcastDialog } from "./BroadcastDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
-import type { LawyerOption } from "@/components/litigation/CreateLawsuitDialog";
+import type { LawyerOption, LookupOption } from "@/components/litigation/CreateLawsuitDialog";
 import type { LawsuitOption } from "@/components/executions/CreateExecutionRequestDialog";
 
 const roleLabels: Record<Role, { ar: string; en: string }> = {
@@ -25,12 +25,16 @@ export function TopNavbar({
   locale,
   lawyers,
   lawsuits,
+  courtLookups,
+  expertOfficeLookups,
 }: {
   userName: string;
   userRole: Role;
   locale: string;
   lawyers: LawyerOption[];
   lawsuits: LawsuitOption[];
+  courtLookups: LookupOption[];
+  expertOfficeLookups: LookupOption[];
 }) {
   const t = useTranslations("common");
   const initials = userName
@@ -60,7 +64,13 @@ export function TopNavbar({
 
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <BroadcastDialog userRole={userRole} />
-        <QuickAddMenu userRole={userRole} lawyers={lawyers} lawsuits={lawsuits} />
+        <QuickAddMenu
+          userRole={userRole}
+          lawyers={lawyers}
+          lawsuits={lawsuits}
+          courtLookups={courtLookups}
+          expertOfficeLookups={expertOfficeLookups}
+        />
         <LanguageSwitcher />
         <Separator orientation="vertical" className="hidden h-8 sm:block" />
         <div className="hidden items-center gap-3 sm:flex">

@@ -1,12 +1,15 @@
 import { getTranslations } from "next-intl/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canUpdateOrDeleteRecords } from "@/lib/permissions";
 import { FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ContractsDataTable } from "@/components/contracts/ContractsDataTable";
+import { ContractsModule } from "@/components/contracts/ContractsModule";
 import { ContractsPageActions } from "@/components/contracts/ContractsPageActions";
 
 export default async function ContractsPage() {
   const t = await getTranslations("contracts");
+  const session = await auth();
 
   const [contracts, projects] = await Promise.all([
     prisma.contract.findMany({
@@ -20,6 +23,7 @@ export default async function ContractsPage() {
 
   const data = contracts.map((c) => ({
     id: c.id,
+    projectId: c.projectId,
     contractorName: c.contractorName,
     projectName: c.project.name,
     projectLocation: c.project.location,
@@ -27,6 +31,7 @@ export default async function ContractsPage() {
     guaranteeExpiryDate: c.guaranteeExpiryDate.toISOString(),
     penaltyClause: c.penaltyClause,
     status: c.status,
+    createdAt: c.createdAt.toISOString(),
   }));
 
   const projectOptions = projects.map((project) => ({
@@ -35,6 +40,10 @@ export default async function ContractsPage() {
     location: project.location,
   }));
 
+  const user = session!.user;
+  const canUpdate = canUpdateOrDeleteRecords(user.role);
+  const canDelete = canUpdateOrDeleteRecords(user.role);
+
   return (
     <div>
       <PageHeader
@@ -42,7 +51,12 @@ export default async function ContractsPage() {
         icon={FileSignature}
         action={<ContractsPageActions projects={projectOptions} />}
       />
-      <ContractsDataTable data={data} />
+      <ContractsModule
+        data={data}
+        projects={projectOptions}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
+      />
     </div>
   );
 }

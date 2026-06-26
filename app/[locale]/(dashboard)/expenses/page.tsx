@@ -4,11 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth } from "date-fns";
 import { Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ExpensesModule } from "@/components/expenses/ExpensesModule";
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
-import {
-  ExpensesDataTable,
-  ExpenseKpiCards,
-} from "@/components/expenses/ExpensesDataTable";
+import { hasPermission, canUpdateOrDeleteRecords } from "@/lib/permissions";
 import { canApproveExpenses, canRequestExpense } from "@/lib/rbac";
 import { ExpenseStatus } from "@prisma/client";
 
@@ -51,17 +49,21 @@ export default async function ExpensesPage() {
 
   const data = expenses.map((e) => ({
     id: e.id,
-    amount: e.amount,
+    amount: Number(e.amount),
     description: e.description,
     date: e.date.toISOString(),
     status: e.status,
+    lawsuitId: e.lawsuitId,
     lawsuitLabel: e.lawsuit ? `${e.lawsuit.caseNumber} / ${e.lawsuit.year}` : null,
     requestedByName: e.requestedBy.name,
     receiptUrl: e.receiptUrl,
   }));
 
-  const canCreate = session?.user ? canRequestExpense(session.user.role) : false;
-  const canApprove = session?.user ? canApproveExpenses(session.user.role) : false;
+  const user = session!.user;
+  const canCreate = canRequestExpense(user.role);
+  const canApprove = canApproveExpenses(user.role);
+  const canUpdate = canUpdateOrDeleteRecords(user.role);
+  const canDelete = canUpdateOrDeleteRecords(user.role);
 
   return (
     <div className="space-y-6">
@@ -71,12 +73,16 @@ export default async function ExpensesPage() {
         action={<CreateExpenseDialog lawsuits={lawsuitOptions} canCreate={canCreate} />}
       />
 
-      <ExpenseKpiCards
-        monthTotal={monthAggregate._sum.amount ?? 0}
+      <ExpensesModule
+        data={data}
+        lawsuits={lawsuitOptions}
+        monthTotal={Number(monthAggregate._sum.amount ?? 0)}
         pendingCount={pendingCount}
+        canCreate={canCreate}
+        canApprove={canApprove}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
-
-      <ExpensesDataTable data={data} canApprove={canApprove} />
     </div>
   );
 }

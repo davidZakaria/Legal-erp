@@ -53,15 +53,39 @@ enum LegalDocumentCategory {
   INTERNAL_MEMO
 }
 
+enum AssemblyType {
+  ORDINARY
+  EXTRAORDINARY
+}
+
+enum ProsecutionStatus {
+  POLICE_REPORT
+  IN_COURT
+  RECONCILED
+  ARCHIVED_SAVED
+}
+
+enum BackupType {
+  AUTO
+  MANUAL
+}
+
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  phone        String?
-  role         Role     @default(LAWYER)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                     String    @id @default(cuid())
+  name                   String
+  email                  String    @unique
+  passwordHash           String    @map("password_hash")
+  phone                  String?
+  role                   Role      @default(LAWYER)
+  permissions            String[]  @default([])
+  isActive               Boolean   @default(true) @map("is_active")
+  isTwoFactorEnabled     Boolean   @default(false) @map("is_two_factor_enabled")
+  secondaryEmail         String?   @map("secondary_email")
+  otpCode                String?   @map("otp_code")
+  otpExpiry              DateTime? @map("otp_expiry")
+  requiresPasswordChange Boolean   @default(true) @map("requires_password_change")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   auditLogs            AuditLog[]
   assignedLawsuits     Lawsuit[]          @relation("AssignedLawyer")
@@ -131,6 +155,37 @@ model GAFITask {
   @@map("gafi_tasks")
 }
 
+model SubsidiaryCompany {
+  id                 String   @id @default(cuid())
+  name               String
+  commercialRegister String?  @map("commercial_register")
+  crExpiryDate       DateTime? @map("cr_expiry_date")
+  taxCard            String?  @map("tax_card")
+  taxCardExpiryDate  DateTime? @map("tax_card_expiry_date")
+  boardExpiryDate    DateTime? @map("board_expiry_date")
+  capitalPaidDetails String?  @map("capital_paid_details")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  assemblies AssemblyArchive[]
+
+  @@map("subsidiary_companies")
+}
+
+model AssemblyArchive {
+  id        String       @id @default(cuid())
+  companyId String       @map("company_id")
+  type      AssemblyType
+  dateHeld  DateTime     @map("date_held")
+  fileUrl   String?      @map("file_url")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  company SubsidiaryCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("assembly_archives")
+}
+
 model Lawsuit {
   id               String        @id @default(cuid())
   caseNumber       String        @map("case_number")
@@ -141,6 +196,12 @@ model Lawsuit {
   archiveNumber    String?       @map("archive_number")
   registrationDate DateTime      @default(now()) @map("registration_date")
   overallStatus    LawsuitStatus @default(UNDER_REVIEW) @map("overall_status")
+  isAtExperts      Boolean       @default(false) @map("is_at_experts")
+  expertOffice     String?       @map("expert_office")
+  expertName       String?       @map("expert_name")
+  expertFileNumber String?       @map("expert_file_number")
+  awardedCompensation Float?     @default(0) @map("awarded_compensation")
+  judicialFees     Float?        @default(0) @map("judicial_fees")
   assignedLawyerId String        @map("assigned_lawyer_id")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
@@ -171,6 +232,7 @@ model CourtSession {
   id               String             @id @default(cuid())
   lawsuitId        String             @map("lawsuit_id")
   sessionDate      DateTime           @map("session_date")
+  sessionType      String             @default("COURT") @map("session_type")
   requiredAction   String             @map("required_action")
   status           CourtSessionStatus @default(PENDING)
   sessionOutcome   String?            @map("session_outcome")
@@ -186,14 +248,15 @@ model CourtSession {
 }
 
 model Prosecution {
-  id               String   @id @default(cuid())
-  caseNumber       String   @map("case_number")
+  id               String            @id @default(cuid())
+  caseNumber       String            @map("case_number")
+  reportNumber     String?           @map("report_number")
   year             Int
-  policeStation    String   @map("police_station")
-  clientName       String   @map("client_name")
-  issueType        String   @map("issue_type")
-  status           String   @default("POLICE_REPORT")
-  assignedLawyerId String   @map("assigned_lawyer_id")
+  policeStation    String            @map("police_station")
+  clientName       String            @map("client_name")
+  issueType        String            @map("issue_type")
+  status           ProsecutionStatus @default(POLICE_REPORT)
+  assignedLawyerId String            @map("assigned_lawyer_id")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -281,4 +344,40 @@ model LegalDocument {
 
   @@index([category])
   @@map("legal_documents")
+}
+
+model CourtLookup {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("court_lookups")
+}
+
+model PoliceStationLookup {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("police_station_lookups")
+}
+
+model ExpertOfficeLookup {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("expert_office_lookups")
+}
+
+model BackupLog {
+  id        String     @id @default(cuid())
+  fileName  String     @map("file_name")
+  type      BackupType
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@map("backup_logs")
 }

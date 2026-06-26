@@ -70,6 +70,7 @@ async function sendMailMessage(options: {
   bcc?: string[];
   subject: string;
   html: string;
+  attachments?: Array<{ filename: string; content: string | Buffer }>;
 }): Promise<EmailResult> {
   const transporter = createTransporter();
   const from = getFromAddress();
@@ -86,6 +87,7 @@ async function sendMailMessage(options: {
       bcc: options.bcc?.length ? options.bcc : undefined,
       subject: options.subject,
       html: options.html,
+      attachments: options.attachments,
     });
     console.log("[Email] Sent successfully:", { to: options.to, subject: options.subject });
     return { success: true, message: "Email sent successfully" };
@@ -297,4 +299,71 @@ export async function sendEmail({
   html: string;
 }): Promise<EmailResult> {
   return sendMailMessage({ to, subject, html });
+}
+
+/** Red header — two-factor authentication OTP */
+export async function sendTwoFactorOtpEmail({
+  to,
+  secondaryEmail,
+  otp,
+  userName,
+}: {
+  to: string;
+  secondaryEmail?: string | null;
+  otp: string;
+  userName: string;
+}): Promise<EmailResult> {
+  const subject = "🔒 رمز التحقق للدخول (2FA) - NJD ERP";
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">مرحباً <strong>${userName}</strong>،</p>
+    <p style="margin: 0 0 16px;">رمز التحقق الخاص بك للدخول إلى النظام هو:</p>
+    <p style="margin: 0 0 16px; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #b91c1c; text-align: center;">${otp}</p>
+    <p style="margin: 0 0 16px;">صلاحية الرمز: <strong>10 دقائق</strong>.</p>
+    <p style="margin: 0; color: #64748b; font-size: 13px;">إذا لم تطلب هذا الرمز، يرجى تجاهل الرسالة والتواصل مع الإدارة فوراً.</p>
+  `;
+
+  const bcc = secondaryEmail?.trim() ? [secondaryEmail.trim()] : undefined;
+
+  return sendMailMessage({
+    to,
+    bcc,
+    subject,
+    html: buildEmailTemplate("رمز التحقق للدخول", bodyHtml, "#b91c1c"),
+  });
+}
+
+/** Daily auto-backup attachment email */
+export async function sendBackupEmail({
+  to,
+  bcc,
+  fileName,
+  jsonContent,
+}: {
+  to: string;
+  bcc?: string[];
+  fileName: string;
+  jsonContent: string;
+}): Promise<EmailResult> {
+  const subject = "📦 النسخة الاحتياطية الآلية اليومية - NJD ERP";
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">مرفق النسخة الاحتياطية الآلية اليومية للنظام بتاريخ ${new Date().toLocaleDateString("ar-EG")}.</p>
+    <p style="margin: 0; color: #64748b; font-size: 13px;">يرجى حفظ الملف في مكان آمن.</p>
+  `;
+
+  return sendMailMessage({
+    to,
+    bcc,
+    subject,
+    html: buildEmailTemplate("النسخة الاحتياطية اليومية", bodyHtml, "#1e3a8a"),
+    attachments: [{ filename: fileName, content: jsonContent }],
+  });
+}
+
+export async function getSuperAdminEmails(): Promise<string[]> {
+  const admins = await prisma.user.findMany({
+    where: { role: Role.SUPER_ADMIN, isActive: true },
+    select: { email: true },
+  });
+  return admins.map((admin) => admin.email);
 }

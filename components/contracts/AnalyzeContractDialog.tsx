@@ -19,6 +19,7 @@ export type ContractAnalysisResult = {
   contractorName: string;
   totalValue: number;
   guaranteeExpiryDate: string | null;
+  penaltyClause: string;
 };
 
 export function AnalyzeContractDialog({

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import {
   getLawsuitUploadDir,
+  joinStoredUploadFile,
   lawsuitAttachmentPublicUrl,
 } from "@/lib/lawsuit-uploads";
 
@@ -99,7 +100,7 @@ export async function POST(
 
     const ext = extensionForMime(file.type) || path.extname(file.name) || "";
     const storedName = `${randomUUID()}${ext}`;
-    const diskPath = path.join(uploadDir, storedName);
+    const diskPath = joinStoredUploadFile(uploadDir, storedName);
 
     await writeFile(diskPath, Buffer.from(await file.arrayBuffer()));
 

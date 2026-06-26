@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageGafiTasks } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 
 const VALID_TASK_TYPES = ["ASSEMBLY", "TRADEMARK"] as const;
 
@@ -14,7 +14,7 @@ export async function createGafiTask(formData: FormData) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!canManageGafiTasks(session.user.role)) {
+  if (!(await hasPermission(session.user.id, "GAFI_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };
   }
 
