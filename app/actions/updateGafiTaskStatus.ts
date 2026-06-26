@@ -1,22 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageGafiTasks } from "@/lib/rbac";
 
 const VALID_STATUSES = ["PENDING", "IN_PROGRESS", "COMPLETED"] as const;
 
 export async function updateGafiTaskStatus(taskId: string, newStatus: string) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("GAFI_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!canManageGafiTasks(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   if (!VALID_STATUSES.includes(newStatus as (typeof VALID_STATUSES)[number])) {
     return { success: false, error: "Invalid status" };

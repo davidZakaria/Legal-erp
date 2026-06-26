@@ -3,10 +3,9 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { ExpenseStatus } from "@prisma/client";
 import {
   expenseReceiptPublicUrl,
@@ -23,11 +22,9 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function updateExpense(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("FINANCIALS_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.expense.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Expense not found" };
@@ -87,11 +84,9 @@ export async function updateExpense(id: string, formData: FormData): Promise<Act
 }
 
 export async function deleteExpense(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("FINANCIALS_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   try {
     await prisma.expense.delete({ where: { id } });

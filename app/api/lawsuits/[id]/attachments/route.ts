@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiSession, requireApiPermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import {
@@ -43,10 +43,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const gate = await requireApiSession();
+  if ("response" in gate) return gate.response;
 
   const { id } = await params;
   const lawsuit = await prisma.lawsuit.findUnique({ where: { id } });
@@ -66,10 +64,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const gate = await requireApiPermission("LAWSUITS_UPDATE");
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
 
   const { id } = await params;
   const lawsuit = await prisma.lawsuit.findUnique({ where: { id } });

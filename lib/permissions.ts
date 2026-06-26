@@ -45,13 +45,26 @@ export async function hasPermission(
   return user.permissions.includes(requiredPermission);
 }
 
+export async function checkPermission(
+  userId: string,
+  requiredPermission: Permission,
+  role?: Role
+): Promise<{ allowed: true } | { allowed: false; error: string }> {
+  const allowed = await hasPermission(userId, requiredPermission, role);
+  if (!allowed) {
+    return { allowed: false, error: "Forbidden" };
+  }
+  return { allowed: true };
+}
+
+/** @deprecated Prefer requirePermission from @/lib/auth-guards for server actions. */
 export async function requirePermission(
   userId: string,
   requiredPermission: Permission,
   role?: Role
 ): Promise<void> {
-  const allowed = await hasPermission(userId, requiredPermission, role);
-  if (!allowed) {
-    throw new Error("Unauthorized");
+  const result = await checkPermission(userId, requiredPermission, role);
+  if (!result.allowed) {
+    throw new Error(result.error);
   }
 }

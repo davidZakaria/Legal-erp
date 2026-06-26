@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
@@ -9,10 +10,11 @@ import { hasPermission } from "@/lib/permissions";
 const VALID_TASK_TYPES = ["ASSEMBLY", "TRADEMARK"] as const;
 
 export async function createGafiTask(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!(await hasPermission(session.user.id, "GAFI_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };

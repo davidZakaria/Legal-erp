@@ -13,7 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         turnstileToken: { label: "Turnstile", type: "text" },
-        skipTurnstile: { label: "Skip Turnstile", type: "text" },
+        twoFactorPass: { label: "Two Factor Pass", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -23,7 +23,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).trim().toLowerCase();
         const password = credentials.password as string;
         const turnstileToken = credentials.turnstileToken as string | undefined;
-        const skipTurnstile = credentials.skipTurnstile === "true";
+        const twoFactorPass = credentials.twoFactorPass as string | undefined;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -36,15 +36,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const needs2FA = userRequiresTwoFactor(user);
 
         if (needs2FA) {
-          const { hasValidTwoFactorPassCookie, consumeTwoFactorPassCookie } = await import(
-            "@/lib/two-factor-cookie"
-          );
-          const passOk = await hasValidTwoFactorPassCookie(user.id);
-          if (!passOk) {
+          const { hasValidTwoFactorPassCookie, consumeTwoFactorPassCookie, verifyTwoFactorPassToken } =
+            await import("@/lib/two-factor-cookie");
+          const cookieOk = await hasValidTwoFactorPassCookie(user.id);
+          const tokenOk = twoFactorPass
+            ? verifyTwoFactorPassToken(twoFactorPass, user.id)
+            : false;
+          if (!cookieOk && !tokenOk) {
             return null;
           }
-          await consumeTwoFactorPassCookie(user.id);
-        } else if (!skipTurnstile) {
+          if (cookieOk) {
+            await consumeTwoFactorPassCookie(user.id);
+          }
+        } else {
           const turnstileOk = await verifyTurnstileToken(turnstileToken);
           if (!turnstileOk) {
             return null;

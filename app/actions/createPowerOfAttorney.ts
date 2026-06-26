@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { isManagerOrAbove } from "@/lib/rbac";
@@ -9,10 +10,11 @@ import { Role } from "@prisma/client";
 import { notifyAssignmentNonBlocking } from "@/lib/email";
 
 export async function createPowerOfAttorney(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!isManagerOrAbove(session.user.role)) {
     return { success: false, error: "Forbidden" };

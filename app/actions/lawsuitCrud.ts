@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { LawsuitStatus, Role } from "@prisma/client";
 import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
 import { revalidateModulePaths, isForeignKeyConstraintError, FK_DELETE_ERROR, type ActionResult } from "@/lib/server-action-utils";
@@ -14,11 +13,9 @@ function parseFinancial(value: FormDataEntryValue | null): number {
 }
 
 export async function updateLawsuit(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("LAWSUITS_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.lawsuit.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Lawsuit not found" };
@@ -91,11 +88,9 @@ export async function updateLawsuit(id: string, formData: FormData): Promise<Act
 }
 
 export async function deleteLawsuit(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("LAWSUITS_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.lawsuit.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Lawsuit not found" };

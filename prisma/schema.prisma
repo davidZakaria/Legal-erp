@@ -83,6 +83,8 @@ model User {
   secondaryEmail         String?   @map("secondary_email")
   otpCode                String?   @map("otp_code")
   otpExpiry              DateTime? @map("otp_expiry")
+  otpAttempts            Int       @default(0) @map("otp_attempts")
+  otpLockedUntil         DateTime? @map("otp_locked_until")
   requiresPasswordChange Boolean   @default(true) @map("requires_password_change")
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")

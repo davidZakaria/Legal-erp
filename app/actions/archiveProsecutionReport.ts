@@ -2,20 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { ProsecutionStatus } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 
 export async function archiveProsecutionReport(prosecutionId: string) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("PROSECUTIONS_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   const existing = await prisma.prosecution.findUnique({ where: { id: prosecutionId } });
   if (!existing) {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiPermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageProsecutions } from "@/lib/rbac";
 import {
   BOUNCED_CHECK_ISSUE_TYPE,
 } from "@/lib/prosecutions/constants";
@@ -14,14 +13,9 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!canManageProsecutions(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireApiPermission("PROSECUTIONS_UPDATE");
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
 
   const { id } = await params;
 

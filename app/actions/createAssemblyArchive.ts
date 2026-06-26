@@ -6,6 +6,7 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { AssemblyType } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
@@ -19,10 +20,11 @@ const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const VALID_TYPES = Object.values(AssemblyType);
 
 export async function createAssemblyArchive(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!(await hasPermission(session.user.id, "GAFI_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };

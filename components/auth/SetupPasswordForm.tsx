@@ -49,10 +49,14 @@ export function SetupPasswordForm() {
         return;
       }
 
-      await update({ requiresPasswordChange: false });
+      try {
+        await update({ requiresPasswordChange: false });
+      } catch {
+        /* session refresh best-effort */
+      }
+
       toast.success("تم تأمين حسابك بنجاح. مرحباً بك في النظام.");
-      router.push("/");
-      router.refresh();
+      window.location.assign("/");
     } finally {
       setSubmitting(false);
     }

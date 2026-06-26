@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { isManagerOrAbove } from "@/lib/rbac";
+import { isPasswordChangeRequired, getAuthenticatedSession } from "@/lib/auth-guards";
 import { runDailyRoutines } from "@/lib/daily-routines";
 
 async function isAuthorized(request: NextRequest): Promise<boolean> {
@@ -11,8 +11,11 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
     return true;
   }
 
-  const session = await auth();
-  return Boolean(session?.user && isManagerOrAbove(session.user.role));
+  const session = await getAuthenticatedSession();
+  if (!session || isPasswordChangeRequired(session)) {
+    return false;
+  }
+  return isManagerOrAbove(session.user.role);
 }
 
 export async function GET(request: NextRequest) {

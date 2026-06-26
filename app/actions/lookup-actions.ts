@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canAccessAdminSection } from "@/lib/rbac";
@@ -21,11 +22,11 @@ type ActionResult =
   | { success: false; error: string };
 
 async function assertAdmin() {
-  const session = await auth();
-  if (!session?.user || !canAccessAdminSection(session.user.role)) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success || !canAccessAdminSection(gate.session.user.role)) {
     return null;
   }
-  return session;
+  return gate.session;
 }
 
 function entityName(type: LookupType) {

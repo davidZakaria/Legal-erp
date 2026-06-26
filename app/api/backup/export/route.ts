@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { Role, BackupType } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { buildBackupFileName, exportDatabaseJson, stringifyBackup } from "@/lib/backup";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== Role.SUPER_ADMIN) {
+  const gate = await requireApiSession();
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
+
+  if (session.user.role !== Role.SUPER_ADMIN) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

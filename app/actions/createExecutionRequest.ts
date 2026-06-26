@@ -1,21 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { Role } from "@prisma/client";
 
 export async function createExecutionRequest(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("LAWSUITS_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   const lawsuitId = formData.get("lawsuitId") as string;
   const executionType = (formData.get("executionType") as string)?.trim();

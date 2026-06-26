@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { NextResponse } from "next/server";
 import { format } from "date-fns";
-import { auth } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { getLawsuitStatusLabelAr } from "@/lib/litigation/constants";
 import { isManagerOrAbove } from "@/lib/rbac";
@@ -9,10 +9,9 @@ import { isManagerOrAbove } from "@/lib/rbac";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const gate = await requireApiSession();
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
 
   if (!isManagerOrAbove(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

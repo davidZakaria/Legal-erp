@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { auth } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth-guards";
 import { logActivity } from "@/lib/auditLogger";
 import { canCreateContract } from "@/lib/rbac";
 
@@ -55,10 +55,9 @@ function parseAnalysisResult(raw: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const gate = await requireApiSession();
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
 
   if (!canCreateContract(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

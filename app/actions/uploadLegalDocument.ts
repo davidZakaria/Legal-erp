@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canUploadLibraryDocuments } from "@/lib/rbac";
@@ -19,10 +20,11 @@ const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const VALID_CATEGORIES = Object.values(LegalDocumentCategory);
 
 export async function uploadLegalDocument(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!canUploadLibraryDocuments(session.user.role)) {
     return { success: false, error: "Forbidden" };

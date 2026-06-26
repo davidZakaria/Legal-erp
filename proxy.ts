@@ -61,10 +61,12 @@ export default async function proxy(request: NextRequest) {
       return intlMiddleware(request);
     }
 
-    if ((pathWithoutLocale === "/login" || pathWithoutLocale === "/2fa") && user) {
-      if (!user.requiresPasswordChange) {
-        return NextResponse.redirect(new URL(`/${locale}`, request.url));
-      }
+    if (
+      user &&
+      user.requiresPasswordChange &&
+      (pathWithoutLocale === "/login" || pathWithoutLocale === "/2fa")
+    ) {
+      return NextResponse.redirect(new URL(`/${locale}/setup-password`, request.url));
     }
 
     return intlMiddleware(request);

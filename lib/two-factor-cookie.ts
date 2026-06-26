@@ -18,6 +18,16 @@ function signPayload(userId: string, expiresAt: number): string {
   return `${payload}.${signature}`;
 }
 
+export function createTwoFactorPassToken(userId: string): string {
+  const expiresAt = Date.now() + MAX_AGE_SECONDS * 1000;
+  return signPayload(userId, expiresAt);
+}
+
+export function verifyTwoFactorPassToken(token: string, userId: string): boolean {
+  const parsed = verifySignedValue(token);
+  return parsed?.userId === userId;
+}
+
 function verifySignedValue(value: string): { userId: string; expiresAt: number } | null {
   const [payload, signature] = value.split(".");
   if (!payload || !signature) return null;

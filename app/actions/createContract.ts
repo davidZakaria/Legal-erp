@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
@@ -13,10 +14,11 @@ import { joinStoredUploadFile } from "@/lib/upload-paths";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function createContract(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!(await hasPermission(session.user.id, "CONTRACTS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };

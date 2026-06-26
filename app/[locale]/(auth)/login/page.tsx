@@ -11,8 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useRouter } from "@/i18n/navigation";
 import { initiateLogin } from "@/app/actions/auth/login";
 import { completeSignIn } from "@/lib/auth-client";
+import { getTurnstileSiteKey } from "@/lib/turnstile-config";
 
 const PENDING_LOGIN_KEY = "njd-pending-login";
+const turnstileSiteKey = getTurnstileSiteKey();
 
 export default function LoginPage() {
   const t = useTranslations("auth");
@@ -24,10 +26,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [dbDown, setDbDown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const turnstileRequired =
-    typeof window !== "undefined"
-      ? Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
-      : false;
 
   useEffect(() => {
     fetch("/api/health/db")
@@ -39,13 +37,13 @@ export default function LoginPage() {
     event.preventDefault();
     setError(null);
 
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail || !password) {
       setError(t("loginError"));
       return;
     }
 
-    if (turnstileRequired && !turnstileToken) {
+    if (turnstileSiteKey && !turnstileToken) {
       setError(t("turnstileRequired"));
       return;
     }
@@ -64,9 +62,10 @@ export default function LoginPage() {
         sessionStorage.setItem(
           PENDING_LOGIN_KEY,
           JSON.stringify({
-            email: trimmedEmail,
-            password,
+            email: initResult.email,
+            pendingLoginToken: initResult.pendingLoginToken,
             exp: Date.now() + 10 * 60 * 1000,
+            devOtp: initResult.devOtp,
           })
         );
         router.push(`/2fa?email=${encodeURIComponent(initResult.email)}`);
@@ -83,7 +82,8 @@ export default function LoginPage() {
       if (!signInResult.success) {
         setError(t("loginError"));
       }
-    } catch {
+    } catch (error) {
+      console.error("[login] Unexpected error:", error);
       setError(t("loginError"));
     } finally {
       setLoading(false);
@@ -132,10 +132,10 @@ export default function LoginPage() {
               />
             </div>
 
-            {turnstileRequired && process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+            {turnstileSiteKey && (
               <div className="flex justify-center">
                 <Turnstile
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  siteKey={turnstileSiteKey}
                   onSuccess={(token) => setTurnstileToken(token)}
                   onExpire={() => setTurnstileToken(null)}
                   onError={() => setTurnstileToken(null)}
@@ -156,7 +156,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="h-10 w-full bg-slate-900 hover:bg-slate-800"
-              disabled={loading || dbDown || (turnstileRequired && !turnstileToken)}
+              disabled={loading || dbDown || (Boolean(turnstileSiteKey) && !turnstileToken)}
             >
               {loading ? tCommon("loading") : t("loginButton")}
             </Button>

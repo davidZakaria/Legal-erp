@@ -4,10 +4,9 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { AssemblyType } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import {
   assemblyArchivePublicUrl,
   getAssemblyUploadDir,
@@ -34,11 +33,9 @@ export async function updateSubsidiaryCompany(
   id: string,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("GAFI_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.subsidiaryCompany.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Company not found" };
@@ -65,11 +62,9 @@ export async function updateSubsidiaryCompany(
 }
 
 export async function deleteSubsidiaryCompany(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("GAFI_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   try {
     await prisma.subsidiaryCompany.delete({ where: { id } });
@@ -88,11 +83,9 @@ export async function updateAssemblyArchive(
   id: string,
   formData: FormData
 ): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("GAFI_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.assemblyArchive.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Archive not found" };
@@ -144,11 +137,9 @@ export async function updateAssemblyArchive(
 }
 
 export async function deleteAssemblyArchive(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("GAFI_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   try {
     await prisma.assemblyArchive.delete({ where: { id } });

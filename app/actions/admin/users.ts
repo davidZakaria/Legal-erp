@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canAccessAdminSection } from "@/lib/rbac";
@@ -11,13 +12,14 @@ import {
   DEFAULT_LAWYER_PERMISSIONS,
   sanitizePermissions,
 } from "@/lib/permissions/constants";
+import { isSoleSuperAdminEmail } from "@/lib/auth-utils";
 
 async function assertAdmin() {
-  const session = await auth();
-  if (!session?.user || !canAccessAdminSection(session.user.role)) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success || !canAccessAdminSection(gate.session.user.role)) {
     throw new Error("Forbidden");
   }
-  return session;
+  return gate.session;
 }
 
 export async function createUser(formData: FormData) {
@@ -47,6 +49,10 @@ export async function createUser(formData: FormData) {
 
   if (role === Role.SUPER_ADMIN && session.user.role !== Role.SUPER_ADMIN) {
     return { success: false, error: "Only super admins can create super admins" };
+  }
+
+  if (role === Role.SUPER_ADMIN && !isSoleSuperAdminEmail(email)) {
+    return { success: false, error: "Super admin role is reserved for the system owner account" };
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -119,6 +125,14 @@ export async function updateUser(formData: FormData) {
 
   if (target.role === Role.SUPER_ADMIN && session.user.role !== Role.SUPER_ADMIN) {
     return { success: false, error: "Cannot edit super admin accounts" };
+  }
+
+  if (role === Role.SUPER_ADMIN && !isSoleSuperAdminEmail(email)) {
+    return { success: false, error: "Super admin role is reserved for the system owner account" };
+  }
+
+  if (isSoleSuperAdminEmail(target.email) && role !== Role.SUPER_ADMIN) {
+    return { success: false, error: "Cannot change the system owner role" };
   }
 
   const emailConflict = await prisma.user.findFirst({
@@ -196,8 +210,12 @@ export async function toggleUserActive(userId: string) {
 }
 
 export async function resetUserPassword(userId: string) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== Role.SUPER_ADMIN) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
+  }
+  const session = gate.session;
+  if (session.user.role !== Role.SUPER_ADMIN) {
     return { success: false, error: "Forbidden" };
   }
 

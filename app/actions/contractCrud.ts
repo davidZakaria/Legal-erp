@@ -2,10 +2,9 @@
 
 import { randomUUID } from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { getUploadDir } from "@/lib/uploads";
 import { joinStoredUploadFile } from "@/lib/upload-paths";
 import {
@@ -18,11 +17,9 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function updateContract(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("CONTRACTS_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.contract.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Contract not found" };
@@ -88,11 +85,9 @@ export async function updateContract(id: string, formData: FormData): Promise<Ac
 }
 
 export async function deleteContract(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("CONTRACTS_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   try {
     const existing = await prisma.contract.findUnique({ where: { id } });

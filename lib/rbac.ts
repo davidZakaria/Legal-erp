@@ -41,6 +41,7 @@ export function canCreateLawsuit(role: Role): boolean {
   return isManagerOrAbove(role);
 }
 
+/** @deprecated Use hasPermission(..., "GAFI_UPDATE") for write paths. */
 export function canManageGafiTasks(role: Role): boolean {
   return isManagerOrAbove(role);
 }
@@ -53,6 +54,7 @@ export function canCreateContract(role: Role): boolean {
   );
 }
 
+/** @deprecated Use hasPermission(..., "PROSECUTIONS_UPDATE") for write paths. */
 export function canManageProsecutions(role: Role): boolean {
   return (
     role === Role.SUPER_ADMIN ||

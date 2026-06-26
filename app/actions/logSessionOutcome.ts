@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canLogSessionOutcome } from "@/lib/rbac";
@@ -9,10 +10,11 @@ import { CourtSessionStatus } from "@prisma/client";
 import { notifyManagersNonBlocking } from "@/lib/email";
 
 export async function logSessionOutcome(formData: FormData, sessionId: string) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   const sessionOutcome = formData.get("sessionOutcome") as string;
   const nextSessionDateStr = formData.get("nextSessionDate") as string;

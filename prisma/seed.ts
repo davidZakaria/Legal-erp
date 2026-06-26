@@ -107,15 +107,21 @@ async function main() {
   await seedFiles();
   await seedLookups();
 
-  const superAdmin = await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: { email: "admin@njd.com" },
-    update: { name: "أحمد المدير", passwordHash, isActive: true, requiresPasswordChange: false },
+    update: {
+      name: "أحمد المدير",
+      passwordHash,
+      role: Role.LEGAL_MANAGER,
+      isActive: true,
+      requiresPasswordChange: false,
+    },
     create: {
       name: "أحمد المدير",
       email: "admin@njd.com",
       passwordHash,
       phone: "+201000000001",
-      role: Role.SUPER_ADMIN,
+      role: Role.LEGAL_MANAGER,
       isActive: true,
       requiresPasswordChange: false,
     },
@@ -220,28 +226,38 @@ async function main() {
     },
   });
 
-  const managerDavid = await prisma.user.upsert({
+  const superAdmin = await prisma.user.upsert({
     where: { email: "davidsamiii97@gmail.com" },
     update: {
-      name: "David Sami — Test Manager",
+      name: "David Sami",
       passwordHash,
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
+      permissions: [],
       isActive: true,
       requiresPasswordChange: false,
     },
     create: {
-      name: "David Sami — Test Manager",
+      name: "David Sami",
       email: "davidsamiii97@gmail.com",
       passwordHash,
       phone: "+201000000011",
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
       isActive: true,
       requiresPasswordChange: false,
     },
   });
 
+  await prisma.user.updateMany({
+    where: {
+      role: Role.SUPER_ADMIN,
+      NOT: { email: "davidsamiii97@gmail.com" },
+    },
+    data: { role: Role.LEGAL_MANAGER },
+  });
+
+  void adminUser;
+
   void lawyerDavid;
-  void managerDavid;
 
   const jura = await prisma.project.upsert({
     where: { id: "seed-project-jura" },
@@ -854,13 +870,13 @@ async function main() {
   console.log("✓ Seed completed — full preview dataset loaded.");
   console.log("");
   console.log("Login credentials (password: password123):");
-  console.log("  admin@njd.com      — Super Admin");
+  console.log("  admin@njd.com      — Legal Manager");
   console.log("  manager@njd.com    — Legal Manager");
   console.log("  lawyer@njd.com     — Lawyer (سارة المحامية)");
   console.log("  omar@njd.com       — Lawyer (عمر الشريف)");
   console.log("  nada@njd.com       — Lawyer (ندى حسن)");
   console.log("  david@newjerseyegypt.com — Lawyer (email test)");
-  console.log("  davidsamiii97@gmail.com  — Legal Manager (email test)");
+  console.log("  davidsamiii97@gmail.com  — Super Admin");
   console.log("");
   console.log("Highlights:");
   console.log("  • 5 lawsuits across 5 courts, 2 with attachments (1 at experts)");

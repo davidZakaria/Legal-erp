@@ -324,12 +324,26 @@ export async function sendTwoFactorOtpEmail({
 
   const bcc = secondaryEmail?.trim() ? [secondaryEmail.trim()] : undefined;
 
-  return sendMailMessage({
+  const primary = await sendMailMessage({
     to,
     bcc,
     subject,
     html: buildEmailTemplate("رمز التحقق للدخول", bodyHtml, "#b91c1c"),
   });
+
+  if (primary.success) {
+    return primary;
+  }
+
+  if (secondaryEmail?.trim() && secondaryEmail.trim().toLowerCase() !== to.trim().toLowerCase()) {
+    return sendMailMessage({
+      to: secondaryEmail.trim(),
+      subject,
+      html: buildEmailTemplate("رمز التحقق للدخول", bodyHtml, "#b91c1c"),
+    });
+  }
+
+  return primary;
 }
 
 /** Daily auto-backup attachment email */

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -7,10 +7,8 @@ export const runtime = "nodejs";
 const LIMIT = 8;
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const gate = await requireApiSession();
+  if ("response" in gate) return gate.response;
 
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) {

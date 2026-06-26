@@ -3,15 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 
 async function assertSuperAdmin() {
-  const session = await auth();
-  if (!session?.user || session.user.role !== Role.SUPER_ADMIN) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success || gate.session.user.role !== Role.SUPER_ADMIN) {
     return null;
   }
-  return session;
+  return gate.session;
 }
 
 export async function updateSecuritySettings(formData: FormData) {

@@ -2,15 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { LegalTaskStatus, Role } from "@prisma/client";
 
 export async function updateLegalTaskStatus(taskId: string, newStatus: LegalTaskStatus) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   const task = await prisma.legalTask.findUnique({
     where: { id: taskId },

@@ -2,21 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { ProsecutionStatus } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageProsecutions } from "@/lib/rbac";
 import { PROSECUTION_STATUSES } from "@/lib/prosecutions/constants";
 
 export async function updateProsecutionStatus(prosecutionId: string, newStatus: string) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("PROSECUTIONS_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!canManageProsecutions(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   if (!PROSECUTION_STATUSES.includes(newStatus as (typeof PROSECUTION_STATUSES)[number])) {
     return { success: false, error: "Invalid status" };

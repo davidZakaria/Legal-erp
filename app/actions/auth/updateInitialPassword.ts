@@ -4,18 +4,33 @@ import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
+import { requireAuthenticatedOnly } from "@/lib/auth-guards";
 
 const DEFAULT_RESET_PASSWORD = process.env.DEFAULT_RESET_PASSWORD ?? "Njd@2026";
 
 export async function updateInitialPassword(
   newPassword: string
-): Promise<{ success: boolean; error?: string }> {
-  const session = await auth();
-  if (!session?.user?.id) {
+): Promise<{ success: boolean; error?: string; alreadyConfigured?: boolean }> {
+  const gate = await requireAuthenticatedOnly();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
+  }
+
+  const session = gate.session;
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { requiresPasswordChange: true },
+  });
+
+  if (!dbUser) {
     return { success: false, error: "Unauthorized" };
   }
 
-  if (!session.user.requiresPasswordChange) {
+  if (!dbUser.requiresPasswordChange) {
+    if (session.user.requiresPasswordChange) {
+      return { success: true, alreadyConfigured: true };
+    }
     return { success: false, error: "Password already configured" };
   }
 
@@ -25,7 +40,10 @@ export async function updateInitialPassword(
   }
 
   if (trimmed === DEFAULT_RESET_PASSWORD) {
-    return { success: false, error: "Choose a different password than the default reset password" };
+    return {
+      success: false,
+      error: "Choose a different password than the default reset password",
+    };
   }
 
   const passwordHash = await bcrypt.hash(trimmed, 10);

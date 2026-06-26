@@ -19,7 +19,11 @@ export default async function DashboardLayout({
   const { locale } = await params;
 
   if (!user) {
-    redirect("/ar/login");
+    redirect(`/${locale}/login`);
+  }
+
+  if (user.requiresPasswordChange) {
+    redirect(`/${locale}/setup-password`);
   }
 
   const [lawyers, lawsuits, lookups] = await Promise.all([

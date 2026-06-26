@@ -1,10 +1,8 @@
+import { getTurnstileSecretKey, isTurnstileConfigured } from "@/lib/turnstile-config";
+
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-export function isTurnstileConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY
-  );
-}
+export { isTurnstileConfigured } from "@/lib/turnstile-config";
 
 export async function verifyTurnstileToken(
   token: string | null | undefined,
@@ -12,10 +10,9 @@ export async function verifyTurnstileToken(
 ): Promise<boolean> {
   if (!isTurnstileConfigured()) {
     if (process.env.NODE_ENV === "development") {
-      console.warn("[Turnstile] Keys missing — skipping verification in development");
       return true;
     }
-    console.error("[Turnstile] Keys missing in production");
+    console.error("[Turnstile] Keys missing — verification required but not configured");
     return false;
   }
 
@@ -24,7 +21,7 @@ export async function verifyTurnstileToken(
   }
 
   const body = new URLSearchParams({
-    secret: process.env.TURNSTILE_SECRET_KEY!,
+    secret: getTurnstileSecretKey()!,
     response: token.trim(),
   });
 

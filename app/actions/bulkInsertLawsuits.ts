@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
@@ -9,10 +10,11 @@ import { Role } from "@prisma/client";
 import type { BulkLawsuitRow } from "@/lib/litigation/constants";
 
 export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
+  const session = gate.session;
 
   if (!(await hasPermission(session.user.id, "LAWSUITS_CREATE", session.user.role))) {
     return { success: false, error: "Forbidden" };

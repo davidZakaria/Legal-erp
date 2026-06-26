@@ -7,14 +7,14 @@ export async function completeSignIn(options: {
   email: string;
   password: string;
   turnstileToken?: string | null;
-  skipTurnstile?: boolean;
+  twoFactorPass?: string;
   router: AppRouterInstance;
 }): Promise<{ success: boolean; error?: string }> {
   const result = await signIn("credentials", {
-    email: options.email.trim(),
+    email: options.email.trim().toLowerCase(),
     password: options.password,
     turnstileToken: options.turnstileToken ?? "",
-    skipTurnstile: options.skipTurnstile ? "true" : "false",
+    twoFactorPass: options.twoFactorPass ?? "",
     redirect: false,
   });
 

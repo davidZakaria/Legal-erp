@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { isManagerOrAbove } from "@/lib/rbac";
@@ -13,8 +14,9 @@ import {
 } from "@/lib/server-action-utils";
 
 export async function updatePowerOfAttorney(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
   if (!isManagerOrAbove(session.user.role)) {
     return { success: false, error: "Forbidden" };
   }
@@ -59,8 +61,9 @@ export async function updatePowerOfAttorney(id: string, formData: FormData): Pro
 }
 
 export async function deletePowerOfAttorney(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
   if (!isManagerOrAbove(session.user.role)) {
     return { success: false, error: "Forbidden" };
   }
@@ -79,8 +82,9 @@ export async function deletePowerOfAttorney(id: string): Promise<ActionResult> {
 }
 
 export async function updateLegalTask(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
   if (!isManagerOrAbove(session.user.role)) {
     return { success: false, error: "Forbidden" };
   }
@@ -118,8 +122,9 @@ export async function updateLegalTask(id: string, formData: FormData): Promise<A
 }
 
 export async function deleteLegalTask(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
   if (!isManagerOrAbove(session.user.role)) {
     return { success: false, error: "Forbidden" };
   }

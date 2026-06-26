@@ -22,25 +22,25 @@ async function main() {
     },
   });
 
-  const manager = await prisma.user.upsert({
+  const superAdmin = await prisma.user.upsert({
     where: { email: "davidsamiii97@gmail.com" },
     update: {
-      name: "David Sami — Test Manager",
+      name: "David Sami",
       passwordHash,
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
     },
     create: {
-      name: "David Sami — Test Manager",
+      name: "David Sami",
       email: "davidsamiii97@gmail.com",
       passwordHash,
       phone: "+201000000011",
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
     },
   });
 
   console.log("✓ Test accounts ready (password: password123)");
-  console.log(`  Lawyer:  ${lawyer.email} (${lawyer.role})`);
-  console.log(`  Manager: ${manager.email} (${manager.role})`);
+  console.log(`  Lawyer:      ${lawyer.email} (${lawyer.role})`);
+  console.log(`  Super Admin: ${superAdmin.email} (${superAdmin.role})`);
 }
 
 main()

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 
 function reviveDates(row: Record<string, unknown>) {
@@ -110,8 +111,12 @@ async function restoreDatabaseJson(payload: unknown, executorUserId: string) {
 }
 
 export async function restoreBackup(jsonData: string, confirmation: string) {
-  const session = await auth();
-  if (!session?.user || session.user.role !== Role.SUPER_ADMIN) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
+  }
+  const session = gate.session;
+  if (session.user.role !== Role.SUPER_ADMIN) {
     return { success: false, error: "Forbidden" };
   }
   if (confirmation.trim() !== "RESTORE") {

@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { PROSECUTION_ISSUE_TYPES } from "@/lib/prosecutions/constants";
 import {
   FK_DELETE_ERROR,
@@ -13,11 +12,9 @@ import {
 } from "@/lib/server-action-utils";
 
 export async function updateProsecution(id: string, formData: FormData): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("PROSECUTIONS_UPDATE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   const existing = await prisma.prosecution.findUnique({ where: { id } });
   if (!existing) return { success: false, error: "Prosecution not found" };
@@ -57,11 +54,9 @@ export async function updateProsecution(id: string, formData: FormData): Promise
 }
 
 export async function deleteProsecution(id: string): Promise<ActionResult> {
-  const session = await auth();
-  if (!session?.user) return { success: false, error: "Unauthorized" };
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const gate = await requirePermission("PROSECUTIONS_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
 
   try {
     await prisma.prosecution.delete({ where: { id } });

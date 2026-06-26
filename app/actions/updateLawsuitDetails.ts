@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 
 function parseFinancial(value: FormDataEntryValue | null): number {
   const num = value ? Number(value) : 0;
@@ -12,14 +11,11 @@ function parseFinancial(value: FormDataEntryValue | null): number {
 }
 
 export async function updateLawsuitDetails(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("LAWSUITS_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   const lawsuitId = formData.get("lawsuitId") as string;
   if (!lawsuitId) {

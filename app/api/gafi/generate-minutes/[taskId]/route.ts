@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireApiPermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canManageGafiTasks } from "@/lib/rbac";
 import { buildAssemblyMinutesBuffer } from "@/lib/gafi/generateAssemblyMinutes";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!canManageGafiTasks(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const gate = await requireApiPermission("GAFI_UPDATE");
+  if ("response" in gate) return gate.response;
+  const session = gate.session;
 
   const { taskId } = await params;
 

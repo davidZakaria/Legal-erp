@@ -2,21 +2,17 @@
 
 import { unlink } from "fs/promises";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { isManagerOrAbove } from "@/lib/rbac";
 import { resolveLawsuitAttachmentPath } from "@/lib/lawsuit-uploads";
 
 export async function deleteLawsuitAttachment(attachmentId: string, lawsuitId: string) {
-  const session = await auth();
-  if (!session?.user) {
-    return { success: false, error: "Unauthorized" };
+  const gate = await requirePermission("LAWSUITS_UPDATE");
+  if (!gate.success) {
+    return { success: false, error: gate.error };
   }
-
-  if (!isManagerOrAbove(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
+  const session = gate.session;
 
   const attachment = await prisma.lawsuitAttachment.findFirst({
     where: { id: attachmentId, lawsuitId },
