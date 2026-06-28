@@ -23,6 +23,10 @@ import {
   EditLawsuitDialog,
   LawsuitFinancialSummary,
 } from "./EditLawsuitDialog";
+import {
+  LawsuitPreliminaryNoticeSection,
+  type PreliminaryNoticeSummary,
+} from "@/components/notices/LawsuitPreliminaryNoticeSection";
 import type { LawsuitFilters } from "@/lib/litigation/constants";
 import type { LawsuitExportRow } from "@/lib/litigation/exportLawsuits";
 
@@ -51,6 +55,7 @@ export type LawsuitWithSessions = {
     status: string;
     sessionOutcome: string | null;
   }>;
+  preliminaryNotice: PreliminaryNoticeSummary | null;
 };
 
 export function LitigationView({
@@ -103,7 +108,7 @@ export function LitigationView({
       />
 
       {lawsuits.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+        <p className="rounded-lg border border-dashed border-border bg-muted/50 px-4 py-8 text-center text-sm text-muted-foreground">
           {t("noLawsuitsMatch")}
         </p>
       ) : (
@@ -112,16 +117,16 @@ export function LitigationView({
             const caseLabel = `${t("caseNumber")} ${lawsuit.caseNumber} / ${lawsuit.year}`;
 
             return (
-              <Card key={lawsuit.id} className="overflow-hidden border-slate-200 shadow-sm">
-                <CardHeader className="border-b border-slate-100 bg-white">
+              <Card key={lawsuit.id} className="overflow-hidden border-border shadow-sm">
+                <CardHeader className="border-b border-border bg-card">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                         <Scale className="h-5 w-5" />
                       </div>
                       <div className="text-start">
                         <div className="flex flex-wrap items-center gap-2">
-                          <CardTitle className="text-lg text-slate-900">{caseLabel}</CardTitle>
+                          <CardTitle className="text-lg text-foreground">{caseLabel}</CardTitle>
                           <LegalBadge
                             category="lawsuitStatus"
                             value={lawsuit.overallStatus}
@@ -129,11 +134,11 @@ export function LitigationView({
                           />
                           {lawsuit.isAtExperts && <ExpertsBadge locale={locale} />}
                         </div>
-                        <CardDescription className="mt-1 text-base font-medium text-slate-700">
+                        <CardDescription className="mt-1 text-base font-medium text-foreground">
                           {lawsuit.courtName}
                         </CardDescription>
                         {lawsuit.archiveNumber && (
-                          <p className="mt-2 text-sm font-semibold text-slate-800">
+                          <p className="mt-2 text-sm font-semibold text-foreground">
                             {t("archiveFile")}: {lawsuit.archiveNumber}
                           </p>
                         )}
@@ -155,7 +160,8 @@ export function LitigationView({
                           judicialFees={lawsuit.judicialFees}
                           locale={locale}
                         />
-                        <p className="mt-2 text-sm text-slate-500">
+                        <LawsuitPreliminaryNoticeSection notice={lawsuit.preliminaryNotice} />
+                        <p className="mt-2 text-sm text-muted-foreground">
                           {t("clientName")}: {lawsuit.clientName} · {t("opponent")}:{" "}
                           {lawsuit.opponentName} · {t("assignedLawyer")}: {lawsuit.lawyerName}
                         </p>
@@ -198,7 +204,7 @@ export function LitigationView({
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                      <TableRow className="bg-muted/80 hover:bg-muted/80">
                         <TableHead>{t("sessionDate")}</TableHead>
                         <TableHead>{t("requiredAction")}</TableHead>
                         <TableHead>{t("sessionStatus")}</TableHead>
@@ -208,7 +214,7 @@ export function LitigationView({
                     </TableHeader>
                     <TableBody>
                       {lawsuit.sessions.map((s) => (
-                        <TableRow key={s.id} className="bg-white">
+                        <TableRow key={s.id} className="bg-card">
                           <TableCell className="font-medium">
                             {format(new Date(s.sessionDate), "yyyy-MM-dd HH:mm")}
                           </TableCell>
@@ -220,14 +226,14 @@ export function LitigationView({
                               locale={locale}
                             />
                           </TableCell>
-                          <TableCell className="max-w-xs text-slate-600">
+                          <TableCell className="max-w-xs text-muted-foreground">
                             {s.sessionOutcome ?? "—"}
                           </TableCell>
                           <TableCell className="text-center">
                             {s.status === "PENDING" && (
                               <Button
                                 size="sm"
-                                className="gap-2 bg-slate-900 hover:bg-slate-800"
+                                className="gap-2"
                                 onClick={() => setModalSessionId(s.id)}
                               >
                                 <Gavel className="h-4 w-4" />

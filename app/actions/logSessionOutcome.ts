@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { canLogSessionOutcome } from "@/lib/rbac";
 import { CourtSessionStatus } from "@prisma/client";
-import { notifyManagersNonBlocking } from "@/lib/email";
+import { notifySessionOutcomeManagersNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function logSessionOutcome(formData: FormData, sessionId: string) {
   const gate = await requireAuthenticatedSession();
@@ -85,9 +85,10 @@ export async function logSessionOutcome(formData: FormData, sessionId: string) {
     }
   });
 
-  notifyManagersNonBlocking(
+  notifySessionOutcomeManagersNonBlocking(
     session.user.name ?? "محامٍ",
-    `إثبات قرار الجلسة: ${sessionOutcome.trim()} — دعوى رقم ${courtSession.lawsuit.caseNumber} لسنة ${courtSession.lawsuit.year}`
+    courtSession.lawsuit.caseNumber,
+    courtSession.lawsuit.year
   );
 
   revalidatePath("/litigation");

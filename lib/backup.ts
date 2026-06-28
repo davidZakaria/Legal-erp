@@ -30,6 +30,8 @@ export async function exportDatabaseJson() {
       courtLookups: await prisma.courtLookup.findMany(),
       policeStationLookups: await prisma.policeStationLookup.findMany(),
       expertOfficeLookups: await prisma.expertOfficeLookup.findMany(),
+      legalNotices: await prisma.legalNotice.findMany(),
+      backupLogs: await prisma.backupLog.findMany(),
     },
   };
 }

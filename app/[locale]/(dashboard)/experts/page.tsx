@@ -1,7 +1,8 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canCreateLawsuit } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { SESSION_TYPE_EXPERT } from "@/lib/litigation/constants";
 import { Briefcase } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -9,7 +10,15 @@ import { ExpertsDataTable } from "@/components/experts/ExpertsDataTable";
 
 export default async function ExpertsPage() {
   const t = await getTranslations("experts");
+  const locale = await getLocale();
   const session = await auth();
+
+  if (
+    session?.user &&
+    !(await hasPermission(session.user.id, "LAWSUITS_READ", session.user.role))
+  ) {
+    redirect({ href: "/", locale });
+  }
 
   const lawsuits = await prisma.lawsuit.findMany({
     where: { isAtExperts: true },
@@ -44,12 +53,13 @@ export default async function ExpertsPage() {
     })),
   }));
 
-  const canManage = session?.user ? canCreateLawsuit(session.user.role) : false;
+  const user = session!.user;
+  const canManage = await hasPermission(user.id, "LAWSUITS_UPDATE", user.role);
 
   return (
     <div>
       <PageHeader title={t("title")} icon={Briefcase} />
-      <p className="mb-6 text-sm text-slate-600">{t("description")}</p>
+      <p className="mb-6 text-sm text-muted-foreground">{t("description")}</p>
       <ExpertsDataTable lawsuits={data} canManage={canManage} />
     </div>
   );

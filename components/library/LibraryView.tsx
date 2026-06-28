@@ -30,7 +30,7 @@ function DocumentGrid({ documents }: { documents: LibraryDocument[] }) {
 
   if (!documents.length) {
     return (
-      <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+      <p className="rounded-lg border border-dashed border-border bg-muted/50 px-4 py-12 text-center text-sm text-muted-foreground">
         {t("emptyCategory")}
       </p>
     );
@@ -39,16 +39,16 @@ function DocumentGrid({ documents }: { documents: LibraryDocument[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {documents.map((doc) => (
-        <Card key={doc.id} className="border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+        <Card key={doc.id} className="border-border shadow-sm transition-shadow hover:shadow-md">
           <CardHeader className="flex flex-row items-start gap-3 pb-2">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600">
               <FileText className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1 text-start">
-              <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+              <CardTitle className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
                 {doc.title}
               </CardTitle>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {format(new Date(doc.uploadedAt), "yyyy-MM-dd")} · {doc.uploadedByName}
               </p>
             </div>

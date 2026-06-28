@@ -2,8 +2,7 @@ import { getTranslations, getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { hasPermission, canUpdateOrDeleteRecords } from "@/lib/permissions";
-import { canManageProsecutions } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { getPoliceStationLookups } from "@/lib/lookups";
 import { ShieldAlert } from "lucide-react";
 import { Role } from "@prisma/client";
@@ -59,9 +58,9 @@ export default async function ProsecutionsPage() {
 
   const user = session!.user;
   const canCreate = await hasPermission(user.id, "PROSECUTIONS_CREATE", user.role);
-  const canManage = canManageProsecutions(user.role);
-  const canEdit = canUpdateOrDeleteRecords(user.role);
-  const canDelete = canUpdateOrDeleteRecords(user.role);
+  const canEdit = await hasPermission(user.id, "PROSECUTIONS_UPDATE", user.role);
+  const canDelete = await hasPermission(user.id, "PROSECUTIONS_DELETE", user.role);
+  const canManage = canCreate || canEdit;
 
   return (
     <div>

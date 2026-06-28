@@ -100,7 +100,7 @@ export function CreateGafiTaskDialog({
     <>
       {!hideTrigger && (
       <Button
-        className="gap-2 bg-slate-900 hover:bg-slate-800"
+        className="gap-2"
         onClick={() => setOpen(true)}
       >
         <Plus className="h-4 w-4" />
@@ -109,14 +109,14 @@ export function CreateGafiTaskDialog({
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg border-slate-200">
+        <DialogContent className="max-w-lg border-border">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Building2 className="h-5 w-5" />
               </div>
               <div className="text-start">
-                <DialogTitle className="text-slate-900">{t("createTaskTitle")}</DialogTitle>
+                <DialogTitle className="text-foreground">{t("createTaskTitle")}</DialogTitle>
                 <DialogDescription>{t("createTaskDescription")}</DialogDescription>
               </div>
             </div>
@@ -199,14 +199,14 @@ export function CreateGafiTaskDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 {tCommon("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-slate-900 hover:bg-slate-800"
+               
               >
                 {submitting ? tCommon("loading") : t("createTaskSubmit")}
               </Button>

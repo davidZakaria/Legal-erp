@@ -116,21 +116,21 @@ function TwoFactorForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md border-slate-200 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-md border-border shadow-lg">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <ShieldCheck className="h-7 w-7" />
           </div>
           <div>
-            <CardTitle className="text-xl text-slate-900">{t("twoFactorTitle")}</CardTitle>
+            <CardTitle className="text-xl text-foreground">{t("twoFactorTitle")}</CardTitle>
             <CardDescription className="mt-2 leading-relaxed">
               {t("twoFactorDescription")}
             </CardDescription>
             {email && (
-              <p className="mt-3 text-sm text-slate-600">
+              <p className="mt-3 text-sm text-muted-foreground">
                 {t("twoFactorEmailSentTo")}{" "}
-                <span dir="ltr" className="font-medium text-slate-800">
+                <span dir="ltr" className="font-medium text-foreground">
                   {maskEmail(email)}
                 </span>
               </p>
@@ -171,12 +171,12 @@ function TwoFactorForm() {
             )}
             <Button
               type="submit"
-              className="h-10 w-full bg-slate-900 hover:bg-slate-800"
+              className="h-10 w-full"
               disabled={loading || code.length !== 6 || !pendingLoginToken}
             >
               {loading ? tCommon("loading") : t("verifyOtpButton")}
             </Button>
-            <Button type="button" variant="link" className="w-full text-slate-600" asChild>
+            <Button type="button" variant="link" className="w-full text-muted-foreground" asChild>
               <Link href="/login">{t("backToLogin")}</Link>
             </Button>
           </form>

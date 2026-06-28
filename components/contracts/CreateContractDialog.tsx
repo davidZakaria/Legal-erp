@@ -35,6 +35,10 @@ import { useFormResetOnOpen } from "@/lib/hooks/useFormResetOnOpen";
 import { parseIsoDate } from "@/lib/crud/parseInitialDates";
 import { useRouter } from "@/i18n/navigation";
 import type { ContractAnalysisResult } from "@/components/contracts/AnalyzeContractDialog";
+import {
+  ContractLinkedNoticesSection,
+  type LinkedNoticeSummary,
+} from "@/components/notices/ContractLinkedNoticesSection";
 
 const schema = z.object({
   projectId: z.string().min(1),
@@ -68,6 +72,7 @@ export function CreateContractDialog({
   prefill,
   uploadedFile,
   initialData = null,
+  linkedNotices = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -75,6 +80,7 @@ export function CreateContractDialog({
   prefill: ContractAnalysisResult | null;
   uploadedFile: File | null;
   initialData?: ContractFormInitialData | null;
+  linkedNotices?: LinkedNoticeSummary[];
 }) {
   const t = useTranslations("contracts");
   const tCommon = useTranslations("common");
@@ -100,6 +106,7 @@ export function CreateContractDialog({
     }
     if (prefill) {
       return {
+        ...(prefill.projectId ? { projectId: prefill.projectId } : {}),
         contractorName: prefill.contractorName,
         totalValue: prefill.totalValue,
         penaltyClause: prefill.penaltyClause ?? "",
@@ -165,14 +172,14 @@ export function CreateContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-slate-200">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <FileSignature className="h-5 w-5" />
             </div>
             <div className="text-start">
-              <DialogTitle className="text-slate-900">
+              <DialogTitle className="text-foreground">
                 {isEditMode ? t("editTitle") : t("createTitle")}
               </DialogTitle>
               <DialogDescription>
@@ -209,6 +216,11 @@ export function CreateContractDialog({
             />
             {errors.projectId && (
               <p className="text-sm text-destructive">{errors.projectId.message}</p>
+            )}
+            {prefill?.projectId && prefill.projectName && (
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                {t("projectDetected", { name: prefill.projectName })}
+              </p>
             )}
           </div>
 
@@ -279,8 +291,12 @@ export function CreateContractDialog({
             )}
           </div>
 
+          {isEditMode && linkedNotices.length > 0 && (
+            <ContractLinkedNoticesSection notices={linkedNotices} />
+          )}
+
           {effectiveFile ? (
-            <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
               {t("attachedPdf")}: {effectiveFile.name}
             </p>
           ) : (
@@ -304,15 +320,11 @@ export function CreateContractDialog({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {tCommon("cancel")}
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="bg-slate-900 hover:bg-slate-800"
-            >
+            <Button type="submit" disabled={submitting}>
               {submitting
                 ? tCommon("loading")
                 : isEditMode

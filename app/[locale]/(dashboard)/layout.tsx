@@ -48,7 +48,7 @@ export default async function DashboardLayout({
   return (
     <Providers>
       <div className="flex min-h-screen">
-        <Sidebar userRole={user.role} />
+        <Sidebar userRole={user.role} userPermissions={user.permissions ?? []} />
         <div className="flex min-h-screen flex-1 flex-col">
           <TopNavbar
             userName={user.name ?? ""}
@@ -59,7 +59,7 @@ export default async function DashboardLayout({
             courtLookups={lookups.courts}
             expertOfficeLookups={lookups.expertOffices}
           />
-          <main className="flex-1 overflow-auto bg-slate-50 p-6 md:p-8">
+          <main className="flex-1 overflow-auto bg-muted/40 p-6 md:p-8">
             {children}
           </main>
         </div>

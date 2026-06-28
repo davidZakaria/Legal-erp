@@ -17,10 +17,13 @@ export type ExecutiveKpi = {
 };
 
 const iconStyles: Record<string, { accent: string; bg: string }> = {
-  lawsuits: { accent: "text-slate-900", bg: "bg-slate-100" },
-  gafi: { accent: "text-blue-600", bg: "bg-blue-50" },
-  contracts: { accent: "text-emerald-700", bg: "bg-emerald-50" },
-  guarantees: { accent: "text-red-700", bg: "bg-red-50" },
+  lawsuits: { accent: "text-foreground", bg: "bg-muted" },
+  gafi: { accent: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
+  contracts: {
+    accent: "text-emerald-700 dark:text-emerald-400",
+    bg: "bg-emerald-50 dark:bg-emerald-950/40",
+  },
+  guarantees: { accent: "text-red-700 dark:text-red-400", bg: "bg-red-50 dark:bg-red-950/40" },
 };
 
 export function ExecutiveKpiCards({ kpis }: { kpis: ExecutiveKpi[] }) {
@@ -34,16 +37,16 @@ export function ExecutiveKpiCards({ kpis }: { kpis: ExecutiveKpi[] }) {
           <Card
             key={kpi.key}
             className={cn(
-              "border-slate-200 shadow-sm transition-colors",
+              "border-border shadow-sm transition-colors",
               kpi.radar &&
-                "animate-pulse border-red-500 bg-red-50 text-red-700"
+                "animate-pulse border-red-500 bg-red-50 text-red-700 dark:border-red-500/60 dark:bg-red-950/40 dark:text-red-400"
             )}
           >
             <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
               <CardTitle
                 className={cn(
                   "text-sm font-medium leading-snug",
-                  kpi.radar ? "text-red-700" : "text-slate-600"
+                  kpi.radar ? "text-red-700 dark:text-red-400" : "text-muted-foreground"
                 )}
               >
                 {kpi.title}
@@ -51,13 +54,13 @@ export function ExecutiveKpiCards({ kpis }: { kpis: ExecutiveKpi[] }) {
               <div
                 className={cn(
                   "shrink-0 rounded-lg p-2",
-                  kpi.radar ? "bg-red-100" : style.bg
+                  kpi.radar ? "bg-red-100 dark:bg-red-950/50" : style.bg
                 )}
               >
                 <Icon
                   className={cn(
                     "h-4 w-4",
-                    kpi.radar ? "text-red-700" : style.accent
+                    kpi.radar ? "text-red-700 dark:text-red-400" : style.accent
                   )}
                 />
               </div>
@@ -66,7 +69,7 @@ export function ExecutiveKpiCards({ kpis }: { kpis: ExecutiveKpi[] }) {
               <p
                 className={cn(
                   "text-3xl font-bold tracking-tight",
-                  kpi.radar ? "text-red-700" : style.accent
+                  kpi.radar ? "text-red-700 dark:text-red-400" : style.accent
                 )}
               >
                 {kpi.value}

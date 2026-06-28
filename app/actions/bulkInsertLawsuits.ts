@@ -8,6 +8,7 @@ import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
 import { Role } from "@prisma/client";
 import type { BulkLawsuitRow } from "@/lib/litigation/constants";
+import { notifyLawsuitAssignmentNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
   const gate = await requireAuthenticatedSession();
@@ -30,9 +31,10 @@ export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
 
   const lawyers = await prisma.user.findMany({
     where: { role: Role.LAWYER },
-    select: { id: true, email: true },
+    select: { id: true, email: true, name: true },
   });
-  const lawyerByEmail = new Map(lawyers.map((l) => [l.email.toLowerCase(), l.id]));
+  const lawyerByEmail = new Map(lawyers.map((l) => [l.email.toLowerCase(), l]));
+  const lawyerById = new Map(lawyers.map((l) => [l.id, l]));
 
   const validRows: Array<{
     caseNumber: string;
@@ -58,8 +60,8 @@ export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
       return { success: false, error: `Row ${i + 1}: invalid year` };
     }
 
-    const lawyerId = lawyerByEmail.get(email);
-    if (!lawyerId) {
+    const lawyer = lawyerByEmail.get(email);
+    if (!lawyer) {
       return { success: false, error: `Row ${i + 1}: lawyer not found (${email})` };
     }
 
@@ -68,7 +70,7 @@ export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
       year,
       courtName,
       opponentName,
-      assignedLawyerId: lawyerId,
+      assignedLawyerId: lawyer.id,
     });
   }
 
@@ -97,6 +99,33 @@ export async function bulkInsertLawsuits(rows: BulkLawsuitRow[]) {
   });
 
   await logActivity(session.user.id, "BULK_IMPORT", "Lawsuit", String(result.count));
+
+  const notifiedLawyers = new Set<string>();
+  for (const row of toInsert) {
+    if (notifiedLawyers.has(row.assignedLawyerId)) continue;
+    const lawyer = lawyerById.get(row.assignedLawyerId);
+    if (!lawyer) continue;
+    notifiedLawyers.add(row.assignedLawyerId);
+    const lawyerRows = toInsert.filter((r) => r.assignedLawyerId === row.assignedLawyerId);
+    const first = lawyerRows[0]!;
+    if (lawyerRows.length === 1) {
+      notifyLawsuitAssignmentNonBlocking(
+        lawyer,
+        first.caseNumber,
+        first.year,
+        first.courtName,
+        first.opponentName
+      );
+    } else {
+      notifyLawsuitAssignmentNonBlocking(
+        lawyer,
+        `${lawyerRows.length} دعاوى`,
+        first.year,
+        first.courtName,
+        `${lawyerRows.length} خصوم (استيراد جماعي)`
+      );
+    }
+  }
 
   revalidatePath("/ar/litigation");
   revalidatePath("/en/litigation");

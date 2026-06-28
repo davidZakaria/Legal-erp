@@ -173,14 +173,14 @@ export function CreateSubsidiaryDialog({
 
   const dialog = (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-slate-200">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Building2 className="h-5 w-5" />
             </div>
             <div className="text-start">
-              <DialogTitle className="text-slate-900">
+              <DialogTitle className="text-foreground">
                 {isEditMode ? t("editCompanyTitle") : t("createCompanyTitle")}
               </DialogTitle>
               <DialogDescription>
@@ -259,14 +259,14 @@ export function CreateSubsidiaryDialog({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-slate-900 hover:bg-slate-800"
+             
             >
               {submitting ? tCommon("loading") : isEditMode ? tCommon("save") : t("createCompanySubmit")}
             </Button>
@@ -281,7 +281,7 @@ export function CreateSubsidiaryDialog({
   return (
     <>
       <Button
-        className="gap-2 bg-slate-900 hover:bg-slate-800"
+        className="gap-2"
         onClick={() => setOpen(true)}
       >
         <Plus className="h-4 w-4" />

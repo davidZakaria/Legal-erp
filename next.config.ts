@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  serverExternalPackages: ["pdf-parse"],
+  serverExternalPackages: ["pdf-parse", "archiver", "yauzl"],
   experimental: {
     serverActions: {
       bodySizeLimit: "12mb",

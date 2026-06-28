@@ -74,42 +74,42 @@ function ContractExpandedDetails({
   const expiring = isExpiringSoon(contract.guaranteeExpiryDate);
 
   return (
-    <div className="grid gap-4 border-t border-slate-100 bg-slate-50/80 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 border-t border-border bg-muted/80 px-4 py-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Scale className="h-3.5 w-3.5" />
           {t("penaltyClause")}
         </p>
-        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-800">
+        <p className="rounded-lg border border-border bg-card px-3 py-2 text-sm leading-relaxed text-foreground">
           {contract.penaltyClause}
         </p>
       </div>
 
       <div className="space-y-1">
-        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <MapPin className="h-3.5 w-3.5" />
           {t("projectLocation")}
         </p>
-        <p className="text-sm font-medium text-slate-900">{contract.projectLocation}</p>
+        <p className="text-sm font-medium text-foreground">{contract.projectLocation}</p>
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("registeredDate")}
         </p>
-        <p className="text-sm font-medium text-slate-900">
+        <p className="text-sm font-medium text-foreground">
           {format(new Date(contract.createdAt), "yyyy-MM-dd")}
         </p>
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("daysUntilExpiry")}
         </p>
         <p
           className={cn(
             "text-sm font-semibold",
-            expiring ? "text-destructive" : "text-slate-900"
+            expiring ? "text-destructive" : "text-foreground"
           )}
         >
           {daysUntilExpiry < 0
@@ -121,10 +121,10 @@ function ContractExpandedDetails({
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {t("totalValue")}
         </p>
-        <p className="text-sm font-semibold text-slate-900">
+        <p className="text-sm font-semibold text-foreground">
           {formatCurrency(contract.totalValue, locale)} {tDash("egp")}
         </p>
       </div>
@@ -187,7 +187,7 @@ export function ContractsDataTable({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500"
+            className="h-8 w-8 text-muted-foreground"
             aria-expanded={expanded}
             aria-label={expanded ? t("collapseDetails") : t("expandDetails")}
             onClick={(event) => {
@@ -207,12 +207,12 @@ export function ContractsDataTable({
     }),
     columnHelper.accessor("contractorName", {
       header: () => t("contractor"),
-      cell: (info) => <span className="font-medium text-slate-900">{info.getValue()}</span>,
+      cell: (info) => <span className="font-medium text-foreground">{info.getValue()}</span>,
     }),
     columnHelper.accessor("projectName", {
       header: () => t("project"),
       cell: (info) => (
-        <span className="text-slate-700">
+        <span className="text-foreground">
           {info.getValue()} <span className="text-slate-400">({info.row.original.projectLocation})</span>
         </span>
       ),
@@ -220,7 +220,7 @@ export function ContractsDataTable({
     columnHelper.accessor("totalValue", {
       header: () => t("totalValue"),
       cell: (info) => (
-        <span className="font-semibold text-slate-900">
+        <span className="font-semibold text-foreground">
           {formatCurrency(info.getValue(), locale)} {tDash("egp")}
         </span>
       ),
@@ -287,9 +287,9 @@ export function ContractsDataTable({
   });
 
   return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="border-b border-slate-100 bg-white">
-        <CardTitle className="flex items-center gap-2 text-base text-slate-700">
+    <Card className="border-border shadow-sm">
+      <CardHeader className="border-b border-border bg-card">
+        <CardTitle className="flex items-center gap-2 text-base text-foreground">
           <Radar className="h-4 w-4 text-destructive" />
           {t("guaranteeRadar")}
         </CardTitle>
@@ -298,7 +298,7 @@ export function ContractsDataTable({
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow key={headerGroup.id} className="bg-muted/80 hover:bg-muted/80">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -317,7 +317,7 @@ export function ContractsDataTable({
                   <Fragment key={row.id}>
                     <TableRow
                       className={cn(
-                        "cursor-pointer bg-white",
+                        "cursor-pointer bg-card",
                         expiring && "bg-destructive/5 hover:bg-destructive/10",
                         expanded && "border-b-0"
                       )}
@@ -351,7 +351,7 @@ export function ContractsDataTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="py-8 text-center text-slate-500">
+                <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
                   {tCommon("noData")}
                 </TableCell>
               </TableRow>

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
 import { PROSECUTION_ISSUE_TYPES } from "@/lib/prosecutions/constants";
-import { notifyAssignmentNonBlocking } from "@/lib/email";
+import { notifyProsecutionAssignmentNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function createProsecution(formData: FormData) {
   const gate = await requireAuthenticatedSession();
@@ -60,10 +60,13 @@ export async function createProsecution(formData: FormData) {
 
   await logActivity(session.user.id, "CREATE", "Prosecution", prosecution.id);
 
-  notifyAssignmentNonBlocking(
+  notifyProsecutionAssignmentNonBlocking(
     lawyer,
-    "نيابة / محضر جديد",
-    `تم تكليفك للتو بمتابعة محضر رقم ${caseNumber}/${year} — ${policeStation} — ${issueType} — ${clientName}.`
+    policeStation,
+    caseNumber,
+    year,
+    issueType,
+    clientName
   );
 
   revalidatePath("/ar/prosecutions");

@@ -74,7 +74,28 @@ export default async function LitigationPage({ searchParams }: PageProps) {
     getAllLookups(),
   ]);
 
-  const data = lawsuits.map((l) => ({
+  const lawsuitIds = lawsuits.map((l) => l.id);
+  const linkedNotices =
+    lawsuitIds.length > 0
+      ? await prisma.legalNotice.findMany({
+          where: { lawsuitId: { in: lawsuitIds } },
+          orderBy: { submissionDate: "desc" },
+        })
+      : [];
+
+  const preliminaryNoticeByLawsuitId = new Map<
+    string,
+    (typeof linkedNotices)[number]
+  >();
+  for (const notice of linkedNotices) {
+    if (notice.lawsuitId && !preliminaryNoticeByLawsuitId.has(notice.lawsuitId)) {
+      preliminaryNoticeByLawsuitId.set(notice.lawsuitId, notice);
+    }
+  }
+
+  const data = lawsuits.map((l) => {
+    const notice = preliminaryNoticeByLawsuitId.get(l.id);
+    return {
     id: l.id,
     caseNumber: l.caseNumber,
     year: l.year,
@@ -101,7 +122,21 @@ export default async function LitigationPage({ searchParams }: PageProps) {
       status: s.status,
       sessionOutcome: s.sessionOutcome,
     })),
-  }));
+    preliminaryNotice: notice
+      ? {
+          id: notice.id,
+          noticeNumber: notice.noticeNumber,
+          year: notice.year,
+          noticeType: notice.noticeType,
+          bailiffOffice: notice.bailiffOffice,
+          opponentName: notice.opponentName,
+          submissionDate: notice.submissionDate.toISOString(),
+          deliveryStatus: notice.deliveryStatus,
+          deliveryDate: notice.deliveryDate?.toISOString() ?? null,
+        }
+      : null,
+  };
+  });
 
   const courts = Array.from(
     new Set([
@@ -115,8 +150,8 @@ export default async function LitigationPage({ searchParams }: PageProps) {
   const canCreate =
     (await hasPermission(user.id, "LAWSUITS_CREATE", user.role)) ||
     canCreateLawsuit(user.role);
-  const canEdit = isManagerOrAbove(user.role);
-  const canDelete = isManagerOrAbove(user.role);
+  const canEdit = await hasPermission(user.id, "LAWSUITS_UPDATE", user.role);
+  const canDelete = await hasPermission(user.id, "LAWSUITS_DELETE", user.role);
   const canTriggerWhatsApp = isManagerOrAbove(user.role);
 
   return (

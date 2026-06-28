@@ -145,13 +145,21 @@ export function ProsecutionsGrouped({
       });
 
       const data = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
         sent?: number;
         total?: number;
         error?: string;
+        results?: Array<{ lawyerName: string; success: boolean; message: string }>;
       };
 
-      if (!response.ok) {
-        toast.error(data.error ?? t("missionError"), { id: toastId });
+      if (!response.ok || !data.success || (data.sent ?? 0) === 0) {
+        const failed = data.results?.find((result) => !result.success);
+        const detail =
+          failed?.message ??
+          data.error ??
+          (response.status === 403 ? t("missionForbidden") : undefined) ??
+          t("missionError");
+        toast.error(detail, { id: toastId });
         return;
       }
 
@@ -168,7 +176,7 @@ export function ProsecutionsGrouped({
 
   if (stations.length === 0) {
     return (
-      <Card className="border-slate-200 p-8 text-center text-slate-500 shadow-sm">
+      <Card className="border-border p-8 text-center text-muted-foreground shadow-sm">
         {tCommon("noData")}
       </Card>
     );
@@ -183,11 +191,11 @@ export function ProsecutionsGrouped({
         return (
           <section key={station}>
             <div className="mb-4 flex flex-wrap items-center gap-3 border-s-4 border-slate-900 ps-4">
-              <MapPin className="h-5 w-5 text-slate-900" />
-              <h2 className="text-start text-lg font-bold text-slate-900">
+              <MapPin className="h-5 w-5 text-foreground" />
+              <h2 className="text-start text-lg font-bold text-foreground">
                 {t("casesAt", { station })}
               </h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                 {items.length}
               </span>
               {canManage && (
@@ -204,11 +212,11 @@ export function ProsecutionsGrouped({
               )}
             </div>
 
-            <Card className="overflow-hidden border-slate-200 shadow-sm">
+            <Card className="overflow-hidden border-border shadow-sm">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                    <TableRow className="bg-muted/80 hover:bg-muted/80">
                       <TableHead>{tLit("caseNumber")}</TableHead>
                       <TableHead>{t("reportNumber")}</TableHead>
                       <TableHead>{tLit("year")}</TableHead>
@@ -229,24 +237,24 @@ export function ProsecutionsGrouped({
                       return (
                         <TableRow
                           key={item.id}
-                          className={cn("bg-white", isArchived && "opacity-60")}
+                          className={cn("bg-card", isArchived && "opacity-60")}
                         >
-                          <TableCell className="font-medium text-slate-900">
+                          <TableCell className="font-medium text-foreground">
                             {item.caseNumber}
                           </TableCell>
-                          <TableCell className="font-semibold text-slate-800">
+                          <TableCell className="font-semibold text-foreground">
                             {item.reportNumber ?? "—"}
                           </TableCell>
                           <TableCell>{item.year}</TableCell>
                           <TableCell>{item.clientName}</TableCell>
                           <TableCell>{item.issueType}</TableCell>
-                          <TableCell className="text-slate-600">{item.lawyerName}</TableCell>
+                          <TableCell className="text-muted-foreground">{item.lawyerName}</TableCell>
                           <TableCell>
                             <LegalBadge
                               category="prosecutionStatus"
                               value={item.status}
                               locale={locale}
-                              className={isArchived ? "bg-slate-200 text-slate-700" : undefined}
+                              className={isArchived ? "bg-slate-200 text-foreground" : undefined}
                             />
                           </TableCell>
                           {canManage && (

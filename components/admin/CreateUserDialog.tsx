@@ -76,7 +76,7 @@ export function CreateUserDialog({
 
   return (
     <>
-      <Button className="gap-2 bg-slate-900 hover:bg-slate-800" onClick={() => setOpen(true)}>
+      <Button className="gap-2" onClick={() => setOpen(true)}>
         <UserPlus className="h-4 w-4" />
         {t("addUser")}
       </Button>

@@ -13,7 +13,13 @@ import {
   type ProjectOption,
 } from "@/components/contracts/CreateContractDialog";
 
-export function ContractsPageActions({ projects }: { projects: ProjectOption[] }) {
+export function ContractsPageActions({
+  projects,
+  canCreate,
+}: {
+  projects: ProjectOption[];
+  canCreate: boolean;
+}) {
   const t = useTranslations("contracts");
   const [analyzeOpen, setAnalyzeOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -33,6 +39,8 @@ export function ContractsPageActions({ projects }: { projects: ProjectOption[] }
     setCreateOpen(true);
   };
 
+  if (!canCreate) return null;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Button
@@ -44,7 +52,7 @@ export function ContractsPageActions({ projects }: { projects: ProjectOption[] }
         {t("uploadAndAnalyze")}
       </Button>
 
-      <Button className="gap-2 bg-slate-900 hover:bg-slate-800" onClick={openManualCreate}>
+      <Button className="gap-2" onClick={openManualCreate}>
         <Plus className="h-4 w-4" />
         {t("addContract")}
       </Button>

@@ -14,6 +14,7 @@ import {
   getExpenseReceiptUploadDir,
 } from "@/lib/expense-uploads";
 import { joinStoredUploadFile } from "@/lib/upload-paths";
+import { notifyExpenseRequestManagersNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -84,6 +85,13 @@ export async function createExpense(formData: FormData) {
   });
 
   await logActivity(session.user.id, "CREATE", "Expense", expense.id);
+
+  notifyExpenseRequestManagersNonBlocking(
+    session.user.name ?? "محامٍ",
+    amount,
+    description
+  );
+
   revalidatePath("/ar/expenses");
   revalidatePath("/en/expenses");
 

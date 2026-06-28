@@ -84,9 +84,9 @@ export function SubsidiaryRegistryTable({
         {canManage && <CreateSubsidiaryDialog canCreate={canManage} />}
       </div>
 
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-white py-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-600">
+      <Card className="overflow-hidden border-border shadow-sm">
+        <CardHeader className="border-b border-border bg-card py-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Radar className="h-4 w-4 text-red-600" />
             {t("registryRadar")}
           </CardTitle>
@@ -94,7 +94,7 @@ export function SubsidiaryRegistryTable({
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
                 <TableHead>{t("companyName")}</TableHead>
                 <TableHead>{t("commercialRegister")}</TableHead>
                 <TableHead>{t("crExpiryDate")}</TableHead>
@@ -107,8 +107,8 @@ export function SubsidiaryRegistryTable({
             <TableBody>
               {companies.length ? (
                 companies.map((company) => (
-                  <TableRow key={company.id} className="bg-white">
-                    <TableCell className="font-medium text-slate-900">{company.name}</TableCell>
+                  <TableRow key={company.id} className="bg-card">
+                    <TableCell className="font-medium text-foreground">{company.name}</TableCell>
                     <TableCell>{company.commercialRegister ?? "—"}</TableCell>
                     <TableCell>
                       <ExpiryCell dateIso={company.crExpiryDate} />
@@ -120,14 +120,14 @@ export function SubsidiaryRegistryTable({
                     <TableCell>
                       <ExpiryCell dateIso={company.boardExpiryDate} />
                     </TableCell>
-                    <TableCell className="text-slate-600">
+                    <TableCell className="text-muted-foreground">
                       {company.capitalPaidDetails ?? "—"}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>

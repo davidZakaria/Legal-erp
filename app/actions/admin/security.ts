@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { Role } from "@prisma/client";
-import { auth } from "@/lib/auth";
 import { requireAuthenticatedSession } from "@/lib/auth-guards";
-import { prisma } from "@/lib/prisma";
-import { logActivity } from "@/lib/auditLogger";
+import {
+  getTurnstileSiteKey,
+  isTurnstileConfigured,
+} from "@/lib/turnstile-config";
 
 async function assertSuperAdmin() {
   const gate = await requireAuthenticatedSession();
@@ -15,26 +15,9 @@ async function assertSuperAdmin() {
   return gate.session;
 }
 
-export async function updateSecuritySettings(formData: FormData) {
-  const session = await assertSuperAdmin();
-  if (!session) {
-    return { success: false, error: "Forbidden" };
-  }
-
-  const isTwoFactorEnabled = formData.get("isTwoFactorEnabled") === "true";
-  const secondaryEmail = (formData.get("secondaryEmail") as string)?.trim() || null;
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { isTwoFactorEnabled, secondaryEmail },
-  });
-
-  await logActivity(session.user.id, "UPDATE_SECURITY_SETTINGS", "User", session.user.id);
-
-  revalidatePath("/ar/admin/security");
-  revalidatePath("/en/admin/security");
-
-  return { success: true };
+function maskKey(key: string): string {
+  if (key.length <= 8) return "••••••••";
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
 }
 
 export async function getSecurityPageData() {
@@ -43,22 +26,19 @@ export async function getSecurityPageData() {
     return null;
   }
 
-  const [user, backupLogs] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        isTwoFactorEnabled: true,
-        secondaryEmail: true,
-        email: true,
-      },
-    }),
-    prisma.backupLog.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-  ]);
+  const siteKey = getTurnstileSiteKey();
+  const hasProductionKeys = Boolean(
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() &&
+      process.env.TURNSTILE_SECRET_KEY?.trim()
+  );
+  const isDevelopment = process.env.NODE_ENV === "development";
 
-  if (!user) return null;
-
-  return { user, backupLogs };
+  return {
+    turnstile: {
+      isConfigured: isTurnstileConfigured(),
+      hasProductionKeys,
+      isUsingDevKeys: isDevelopment && !hasProductionKeys,
+      siteKeyPreview: siteKey ? maskKey(siteKey) : null,
+    },
+  };
 }

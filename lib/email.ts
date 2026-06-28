@@ -8,7 +8,7 @@ function createTransporter() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT ?? 587);
   const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const pass = process.env.SMTP_PASS?.replace(/\s/g, "");
 
   if (!host || !user || !pass) {
     return null;
@@ -211,11 +211,166 @@ export async function getManagerEmails(): Promise<string[]> {
 export function notifyAssignmentNonBlocking(
   lawyer: { email: string; name: string },
   entityName: string,
-  details: string
+  details: string,
+  subject = "🔔 تكليف قانوني جديد"
 ): void {
-  void sendAssignmentEmail(lawyer.email, lawyer.name, entityName, details).catch((error) =>
+  void sendAssignmentEmail(lawyer.email, lawyer.name, entityName, details, subject).catch((error) =>
     console.error("[Email] Assignment notification failed:", error)
   );
+}
+
+/** Green header — court session outcome reported upward */
+export async function sendSessionOutcomeManagerEmail(
+  managerEmailsArray: string[],
+  lawyerName: string,
+  caseNumber: string,
+  year: number
+): Promise<EmailResult> {
+  const recipients = [...new Set(managerEmailsArray.filter(Boolean))];
+  if (!recipients.length) {
+    return { success: false, message: "No manager email addresses configured" };
+  }
+
+  const subject = `✅ تحديث جلسة محكمة: قام ${lawyerName} بإثبات قرار المحكمة في القضية ${caseNumber}`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">
+      قام أ. <strong>${lawyerName}</strong> بإثبات قرار المحكمة في القضية
+      <strong>${caseNumber}/${year}</strong>.
+    </p>
+    <p style="margin: 0;">يمكنكم مراجعة تفاصيل الجلسة على النظام.</p>
+  `;
+
+  const [primary, ...bccRest] = recipients;
+  return sendMailMessage({
+    to: primary,
+    bcc: bccRest.length ? bccRest : undefined,
+    subject,
+    html: buildEmailTemplate("تحديث جلسة محكمة", bodyHtml, "#166534"),
+  });
+}
+
+/** Green header — notice delivery requires management action */
+export async function sendNoticeDeliveryEscalationAlert(
+  managerEmailsArray: string[],
+  opponentName: string
+): Promise<EmailResult> {
+  const recipients = [...new Set(managerEmailsArray.filter(Boolean))];
+  if (!recipients.length) {
+    return { success: false, message: "No manager email addresses configured" };
+  }
+
+  const subject = `📢 تحديث إعلان إنذار: تم الإعلان ضد ${opponentName}`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">
+      تم الإعلان ضد <strong>${opponentName}</strong>.
+      برجاء اتخاذ اللازم قانونياً/مالياً.
+    </p>
+    <p style="margin: 0;">يرجى مراجعة سجل الإنذارات على النظام.</p>
+  `;
+
+  const [primary, ...bccRest] = recipients;
+  return sendMailMessage({
+    to: primary,
+    bcc: bccRest.length ? bccRest : undefined,
+    subject,
+    html: buildEmailTemplate("تحديث إعلان إنذار", bodyHtml, "#166534"),
+  });
+}
+
+/** Green header — experts referral alert */
+export async function sendExpertsReferralManagerEmail(
+  managerEmailsArray: string[],
+  caseNumber: string,
+  year: number
+): Promise<EmailResult> {
+  const recipients = [...new Set(managerEmailsArray.filter(Boolean))];
+  if (!recipients.length) {
+    return { success: false, message: "No manager email addresses configured" };
+  }
+
+  const subject = `💼 إحالة للخبراء: تم إحالة الدعوى ${caseNumber}`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">
+      تم إحالة الدعوى <strong>${caseNumber}/${year}</strong> لمصلحة الخبراء.
+    </p>
+    <p style="margin: 0;">يرجى متابعة الملف على النظام.</p>
+  `;
+
+  const [primary, ...bccRest] = recipients;
+  return sendMailMessage({
+    to: primary,
+    bcc: bccRest.length ? bccRest : undefined,
+    subject,
+    html: buildEmailTemplate("إحالة للخبراء", bodyHtml, "#166534"),
+  });
+}
+
+/** Gold header — new expense / petty cash request to managers */
+export async function sendExpenseRequestEmail(
+  managerEmailsArray: string[],
+  lawyerName: string,
+  amount: number,
+  description: string
+): Promise<EmailResult> {
+  const recipients = [...new Set(managerEmailsArray.filter(Boolean))];
+  if (!recipients.length) {
+    return { success: false, message: "No manager email addresses configured" };
+  }
+
+  const formattedAmount = new Intl.NumberFormat("ar-EG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+  const subject = `💸 طلب عهدة جديد: ${formattedAmount} ج.م`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">
+      يطلب أ. <strong>${lawyerName}</strong> مبلغ <strong>${formattedAmount} ج.م</strong>
+      لغرض: ${description}
+    </p>
+    <p style="margin: 0;">يرجى مراجعة طلب العهدة على النظام والرد في أقرب وقت.</p>
+  `;
+
+  const [primary, ...bccRest] = recipients;
+  return sendMailMessage({
+    to: primary,
+    bcc: bccRest.length ? bccRest : undefined,
+    subject,
+    html: buildEmailTemplate("طلب عهدة جديد", bodyHtml, "#ca8a04"),
+  });
+}
+
+/** Blue header — expense approval/rejection to requester */
+export async function sendExpenseDecisionEmail(
+  to: string,
+  requesterName: string,
+  amount: number,
+  approved: boolean
+): Promise<EmailResult> {
+  const formattedAmount = new Intl.NumberFormat("ar-EG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+
+  const decisionLabel = approved ? "الموافقة على" : "رفض";
+  const subject = `💳 رد على طلب العهدة: تم ${decisionLabel} طلب العهدة`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">أ. <strong>${requesterName}</strong>،</p>
+    <p style="margin: 0 0 16px;">
+      تم <strong>${decisionLabel}</strong> طلب العهدة بقيمة <strong>${formattedAmount} ج.م</strong>.
+    </p>
+    <p style="margin: 0;">يمكنكم مراجعة التفاصيل على النظام.</p>
+  `;
+
+  return sendMailMessage({
+    to,
+    subject,
+    html: buildEmailTemplate("رد على طلب العهدة", bodyHtml, "#1e3a8a"),
+  });
 }
 
 export function notifyManagersNonBlocking(lawyerName: string, actionDone: string): void {
@@ -227,6 +382,61 @@ export function notifyManagersNonBlocking(lawyerName: string, actionDone: string
       console.error("[Email] Manager update notification failed:", error);
     }
   })();
+}
+
+/** Green header — legal notice delivery status reported to managers */
+export async function sendNoticeDeliveryStatusAlert(
+  managerEmailsArray: string[],
+  opponentName: string,
+  statusLabelAr: string,
+  deliveryDateLabel: string
+): Promise<EmailResult> {
+  const recipients = [...new Set(managerEmailsArray.filter(Boolean))];
+  if (!recipients.length) {
+    return { success: false, message: "No manager email addresses configured" };
+  }
+
+  const subject = `✅ تحديث حالة إنذار: ${opponentName}`;
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">تحية طيبة،</p>
+    <p style="margin: 0 0 16px;">
+      تم تحديث حالة الإنذار الموجه ضد <strong>${opponentName}</strong>
+      إلى <strong>${statusLabelAr}</strong> بتاريخ <strong>${deliveryDateLabel}</strong>.
+    </p>
+    <p style="margin: 0;">يرجى اتخاذ اللازم قانونياً.</p>
+  `;
+
+  const [primary, ...bccRest] = recipients;
+  return sendMailMessage({
+    to: primary,
+    bcc: bccRest.length ? bccRest : undefined,
+    subject,
+    html: buildEmailTemplate("تحديث حالة إنذار", bodyHtml, "#166534"),
+  });
+}
+
+/** Red header — overdue bailiff follow-up for assigned lawyer */
+export async function sendOverdueBailiffNoticeReminder(
+  to: string,
+  lawyerName: string,
+  bailiffOffice: string,
+  opponentName: string
+): Promise<EmailResult> {
+  const subject = "🚨 تذكير مأمورية محضرين: إنذارات متأخرة";
+  const bodyHtml = `
+    <p style="margin: 0 0 16px;">عزيزي المحامي <strong>${lawyerName}</strong>،</p>
+    <p style="margin: 0 0 16px;">
+      برجاء التوجه لقلم محضرين <strong>${bailiffOffice}</strong> لمتابعة إعلان الإنذار الموجه ضد
+      <strong>${opponentName}</strong> حيث حل موعد مراجعته للتأكد من تمام الإعلان.
+    </p>
+    <p style="margin: 0;">برجاء تحديث حالة الإعلان على النظام فور الانتهاء.</p>
+  `;
+
+  return sendMailMessage({
+    to,
+    subject,
+    html: buildEmailTemplate("تذكير مأمورية محضرين", bodyHtml, "#b91c1c"),
+  });
 }
 
 export function buildLegalEmailTemplate(title: string, bodyHtml: string): string {

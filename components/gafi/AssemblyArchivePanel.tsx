@@ -47,9 +47,9 @@ export function AssemblyArchivePanel({
         </div>
       )}
 
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-white py-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-600">
+      <Card className="overflow-hidden border-border shadow-sm">
+        <CardHeader className="border-b border-border bg-card py-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <FileArchive className="h-4 w-4" />
             {t("assembliesArchive")}
           </CardTitle>
@@ -57,7 +57,7 @@ export function AssemblyArchivePanel({
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
                 <TableHead>{t("companyName")}</TableHead>
                 <TableHead>{t("assemblyType")}</TableHead>
                 <TableHead>{t("assemblyDateHeld")}</TableHead>
@@ -67,8 +67,8 @@ export function AssemblyArchivePanel({
             <TableBody>
               {archives.length ? (
                 archives.map((archive) => (
-                  <TableRow key={archive.id} className="bg-white">
-                    <TableCell className="font-medium text-slate-900">
+                  <TableRow key={archive.id} className="bg-card">
+                    <TableCell className="font-medium text-foreground">
                       {archive.companyName}
                     </TableCell>
                     <TableCell>
@@ -95,7 +95,7 @@ export function AssemblyArchivePanel({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-slate-500">
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>

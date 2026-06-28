@@ -33,6 +33,7 @@ export type AdminUserRow = {
   role: Role;
   permissions: string[];
   isActive: boolean;
+  isTwoFactorEnabled: boolean;
 };
 
 type EditUserDialogProps = {

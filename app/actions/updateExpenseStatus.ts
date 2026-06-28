@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
 import { ExpenseStatus } from "@prisma/client";
+import { notifyExpenseDecisionNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function updateExpenseStatus(
   expenseId: string,
@@ -22,12 +23,16 @@ export async function updateExpenseStatus(
     return { success: false, error: "Forbidden" };
   }
 
-  const expense = await prisma.expense.findUnique({ where: { id: expenseId } });
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId },
+    include: { requestedBy: { select: { id: true, email: true, name: true } } },
+  });
   if (!expense) {
     return { success: false, error: "Expense not found" };
   }
 
   if (action === "reject") {
+    notifyExpenseDecisionNonBlocking(expense.requestedBy, expense.amount, false);
     await prisma.expense.delete({ where: { id: expenseId } });
     await logActivity(session.user.id, "REJECT", "Expense", expenseId);
     revalidatePath("/ar/expenses");
@@ -43,6 +48,7 @@ export async function updateExpenseStatus(
       where: { id: expenseId },
       data: { status: ExpenseStatus.APPROVED },
     });
+    notifyExpenseDecisionNonBlocking(expense.requestedBy, expense.amount, true);
     await logActivity(session.user.id, "APPROVE", "Expense", expenseId);
   }
 

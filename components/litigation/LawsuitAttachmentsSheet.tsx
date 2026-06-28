@@ -160,13 +160,13 @@ export function LawsuitAttachmentsSheet({
               {attachments.map((attachment) => (
                 <li
                   key={attachment.id}
-                  className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-md border border-border bg-slate-50 px-3 py-2"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {attachment.fileName}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {format(new Date(attachment.uploadedAt), "yyyy-MM-dd HH:mm")}
                     </p>
                   </div>

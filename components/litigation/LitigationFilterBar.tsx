@@ -59,10 +59,10 @@ export function LitigationFilterBar({
   );
 
   return (
-    <div className="mb-6 space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="mb-6 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[220px] flex-1 space-y-1">
-          <label className="text-xs font-medium text-slate-600">{t("filterSearch")}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("filterSearch")}</label>
           <div className="relative">
             <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -84,7 +84,7 @@ export function LitigationFilterBar({
         </div>
 
         <div className="w-full space-y-1 sm:w-44">
-          <label className="text-xs font-medium text-slate-600">{t("overallStatus")}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("overallStatus")}</label>
           <Select
             value={filters.status ?? ALL}
             onValueChange={(value) =>
@@ -109,7 +109,7 @@ export function LitigationFilterBar({
         </div>
 
         <div className="w-full space-y-1 sm:w-48">
-          <label className="text-xs font-medium text-slate-600">{t("court")}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("court")}</label>
           <Select
             value={filters.court ?? ALL}
             onValueChange={(value) =>
@@ -134,7 +134,7 @@ export function LitigationFilterBar({
         </div>
 
         <div className="w-full space-y-1 sm:w-32">
-          <label className="text-xs font-medium text-slate-600">{t("year")}</label>
+          <label className="text-xs font-medium text-muted-foreground">{t("year")}</label>
           <Select
             value={filters.year ?? ALL}
             onValueChange={(value) =>
@@ -159,7 +159,7 @@ export function LitigationFilterBar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" className="gap-1" onClick={clearFilters}>
             <X className="h-4 w-4" />

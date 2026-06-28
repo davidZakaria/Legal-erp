@@ -2,8 +2,11 @@ import { Prisma, LawsuitStatus } from "@prisma/client";
 import type { LawsuitFilters } from "@/lib/litigation/constants";
 import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
 
+/** Court litigation list — excludes cases referred to the Experts Authority. */
 export function buildLawsuitWhere(filters: LawsuitFilters): Prisma.LawsuitWhereInput {
-  const where: Prisma.LawsuitWhereInput = {};
+  const where: Prisma.LawsuitWhereInput = {
+    isAtExperts: false,
+  };
   const q = filters.q?.trim();
 
   if (q) {

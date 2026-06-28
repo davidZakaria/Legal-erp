@@ -47,6 +47,10 @@ yarn-error.log*
 # embedded postgres data
 /data/
 
+# local backup archives (sensitive)
+/private/backups/*
+!/private/backups/.gitkeep
+
 # vercel
 .vercel
 

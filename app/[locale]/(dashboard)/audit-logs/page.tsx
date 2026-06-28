@@ -47,11 +47,11 @@ export default async function AuditLogsPage() {
   return (
     <div>
       <PageHeader title={t("title")} description={t("description")} icon={ClipboardList} />
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
+      <Card className="overflow-hidden border-border shadow-sm">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
                 <TableHead>{t("timestamp")}</TableHead>
                 <TableHead>{t("user")}</TableHead>
                 <TableHead>{t("action")}</TableHead>
@@ -61,34 +61,34 @@ export default async function AuditLogsPage() {
             <TableBody>
               {enrichedLogs.length ? (
                 enrichedLogs.map((log) => (
-                  <TableRow key={log.id} className="bg-white">
-                    <TableCell className="whitespace-nowrap text-slate-600">
-                      <div className="font-medium text-slate-900">
+                  <TableRow key={log.id} className="bg-card">
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      <div className="font-medium text-foreground">
                         {format(log.timestamp, "dd MMM yyyy", { locale: dateLocale })}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         {format(log.timestamp, "HH:mm:ss")}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className="font-medium text-foreground">
                       {log.user.name}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className="bg-slate-100 font-medium text-slate-700"
+                        className="bg-accent font-medium text-foreground"
                       >
                         {log.actionLabel}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-md text-slate-700">
+                    <TableCell className="max-w-md text-foreground">
                       {log.targetDetails}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-slate-500">
+                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>

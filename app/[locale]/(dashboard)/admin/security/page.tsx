@@ -21,9 +21,10 @@ export default async function AdminSecurityPage() {
   }
 
   const pageData = await getSecurityPageData();
-  if (!pageData) redirect({ href: "/", locale });
+  if (!pageData) {
+    redirect({ href: "/", locale });
+  }
 
-  const { user, backupLogs } = pageData!;
   return (
     <div>
       <PageHeader
@@ -31,18 +32,7 @@ export default async function AdminSecurityPage() {
         description={t("securityDescription")}
         icon={ShieldCheck}
       />
-      <SecurityAdminPanel
-        isTwoFactorEnabled={user.isTwoFactorEnabled}
-        secondaryEmail={user.secondaryEmail}
-        primaryEmail={user.email}
-        backupLogs={backupLogs.map((log) => ({
-          id: log.id,
-          fileName: log.fileName,
-          type: log.type,
-          createdAt: log.createdAt.toISOString(),
-        }))}
-      />
+      <SecurityAdminPanel turnstile={pageData!.turnstile} />
     </div>
   );
 }
-

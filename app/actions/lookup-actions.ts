@@ -11,11 +11,9 @@ import { canAccessAdminSection } from "@/lib/rbac";
 export type LookupType = "court" | "policeStation" | "expertOffice" | "project";
 
 const DUPLICATE_NAME_ERROR = "عفواً، هذا الاسم مسجل بالفعل في النظام.";
-const FK_DELETE_ERROR = "عفواً، لا يمكن الحذف لوجود قضايا مرتبطة بهذا البيان.";
-const LOOKUP_IN_USE_ERROR =
-  "عفواً، لا يمكن الحذف. هذا العنصر مرتبط بقضايا أو محاضر مسجلة بالفعل.";
-const PROJECT_IN_USE_ERROR =
-  "عفواً، لا يمكن الحذف. هذا المشروع مرتبط بعقود مسجلة بالفعل.";
+const FK_DELETE_ERROR = "عفواً، لا يمكن الحذف لوجود بيانات مرتبطة.";
+const LOOKUP_IN_USE_ERROR = FK_DELETE_ERROR;
+const PROJECT_IN_USE_ERROR = FK_DELETE_ERROR;
 
 type ActionResult =
   | { success: true; id?: string }

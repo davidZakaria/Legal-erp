@@ -91,14 +91,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md border-slate-200 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-md border-border shadow-lg">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-7 w-7" />
           </div>
           <div>
-            <CardTitle className="text-xl text-slate-900">{tCommon("appName")}</CardTitle>
+            <CardTitle className="text-xl text-foreground">{tCommon("appName")}</CardTitle>
             <CardDescription className="mt-2">{t("welcome")}</CardDescription>
           </div>
         </CardHeader>
@@ -144,7 +144,7 @@ export default function LoginPage() {
             )}
 
             {dbDown && (
-              <p className="rounded-md bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-center text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                 {t("dbUnavailable")}
               </p>
             )}
@@ -155,7 +155,7 @@ export default function LoginPage() {
             )}
             <Button
               type="submit"
-              className="h-10 w-full bg-slate-900 hover:bg-slate-800"
+              className="h-10 w-full"
               disabled={loading || dbDown || (Boolean(turnstileSiteKey) && !turnstileToken)}
             >
               {loading ? tCommon("loading") : t("loginButton")}

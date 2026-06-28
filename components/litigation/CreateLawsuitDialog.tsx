@@ -116,12 +116,20 @@ export type LawyerOption = {
 
 export type LookupOption = { id: string; name: string };
 
+export type NoticeEscalationPrefill = {
+  opponentName: string;
+  clientName: string;
+  assignedLawyerId: string;
+};
+
 export function CreateLawsuitDialog({
   lawyers,
   courtLookups,
   expertOfficeLookups,
   canCreate,
   initialData = null,
+  noticePrefill = null,
+  legalNoticeId = null,
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
@@ -131,6 +139,8 @@ export function CreateLawsuitDialog({
   expertOfficeLookups: LookupOption[];
   canCreate: boolean;
   initialData?: LawsuitFormInitialData | null;
+  noticePrefill?: NoticeEscalationPrefill | null;
+  legalNoticeId?: string | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
@@ -165,17 +175,27 @@ export function CreateLawsuitDialog({
   );
 
   const formInitial = useMemo(() => {
-    if (!initialData) return null;
-    return {
-      ...initialData,
-      registrationDate: parseIsoDate(initialData.registrationDate) ?? new Date(),
-      firstSessionDate: parseIsoDate(initialData.firstSessionDate),
-      archiveNumber: initialData.archiveNumber ?? "",
-      expertOffice: initialData.expertOffice ?? "",
-      expertName: initialData.expertName ?? "",
-      expertFileNumber: initialData.expertFileNumber ?? "",
-    };
-  }, [initialData]);
+    if (initialData) {
+      return {
+        ...initialData,
+        registrationDate: parseIsoDate(initialData.registrationDate) ?? new Date(),
+        firstSessionDate: parseIsoDate(initialData.firstSessionDate),
+        archiveNumber: initialData.archiveNumber ?? "",
+        expertOffice: initialData.expertOffice ?? "",
+        expertName: initialData.expertName ?? "",
+        expertFileNumber: initialData.expertFileNumber ?? "",
+      };
+    }
+    if (noticePrefill) {
+      return {
+        ...defaultValues,
+        opponentName: noticePrefill.opponentName,
+        clientName: noticePrefill.clientName,
+        assignedLawyerId: noticePrefill.assignedLawyerId,
+      };
+    }
+    return null;
+  }, [initialData, noticePrefill, defaultValues]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -244,6 +264,7 @@ export function CreateLawsuitDialog({
     if (data.expertOffice) formData.set("expertOffice", data.expertOffice);
     if (data.expertName) formData.set("expertName", data.expertName);
     if (data.expertFileNumber) formData.set("expertFileNumber", data.expertFileNumber);
+    if (legalNoticeId) formData.set("legalNoticeId", legalNoticeId);
 
     const result = isEditMode
       ? await updateLawsuit(initialData!.id, formData)
@@ -266,18 +287,26 @@ export function CreateLawsuitDialog({
 
   const dialog = (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border-slate-200">
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border-border">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Scale className="h-5 w-5" />
               </div>
               <div className="text-start">
-                <DialogTitle className="text-slate-900">
-                  {isEditMode ? t("editLawsuitTitle") : t("createLawsuitTitle")}
+                <DialogTitle className="text-foreground">
+                  {isEditMode
+                    ? t("editLawsuitTitle")
+                    : noticePrefill
+                      ? t("escalateFromNoticeTitle")
+                      : t("createLawsuitTitle")}
                 </DialogTitle>
                 <DialogDescription>
-                  {isEditMode ? t("editLawsuitDescription") : t("createLawsuitDescription")}
+                  {isEditMode
+                    ? t("editLawsuitDescription")
+                    : noticePrefill
+                      ? t("escalateFromNoticeDescription")
+                      : t("createLawsuitDescription")}
                 </DialogDescription>
               </div>
             </div>
@@ -518,14 +547,14 @@ export function CreateLawsuitDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 {tCommon("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-slate-900 hover:bg-slate-800"
+               
               >
                 {submitting ? tCommon("loading") : isEditMode ? tCommon("save") : t("createLawsuitSubmit")}
               </Button>
@@ -541,7 +570,7 @@ export function CreateLawsuitDialog({
     <PermissionGuard permission="LAWSUITS_CREATE">
       <>
         <Button
-          className="gap-2 bg-slate-900 hover:bg-slate-800"
+          className="gap-2"
           onClick={() => setOpen(true)}
         >
           <Plus className="h-4 w-4" />

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
+import { notifyExpertsReferralIfNeeded } from "@/lib/notifications/assignment-matrix";
 
 function parseFinancial(value: FormDataEntryValue | null): number {
   const num = value ? Number(value) : 0;
@@ -52,6 +53,13 @@ export async function updateLawsuitDetails(formData: FormData) {
       judicialFees,
     },
   });
+
+  notifyExpertsReferralIfNeeded(
+    existing.isAtExperts,
+    isAtExperts,
+    existing.caseNumber,
+    existing.year
+  );
 
   await logActivity(session.user.id, "UPDATE", "Lawsuit", lawsuitId);
 

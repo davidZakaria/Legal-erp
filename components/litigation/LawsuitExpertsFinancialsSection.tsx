@@ -55,7 +55,7 @@ export function LawsuitExpertsFinancialsSection({
 
   return (
     <div className="space-y-4 rounded-lg border border-purple-100 bg-purple-50/30 p-4">
-      <h3 className="text-sm font-semibold text-slate-800">
+      <h3 className="text-sm font-semibold text-foreground">
         {t("financialsExpertsSection")}
       </h3>
 
@@ -71,7 +71,7 @@ export function LawsuitExpertsFinancialsSection({
               value={values.awardedCompensation}
               onChange={(event) => onChange("awardedCompensation", event.target.value)}
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {formatEgp(Number(values.awardedCompensation) || 0, locale)} {tDash("egp")}
             </p>
             {errors?.awardedCompensation && (
@@ -88,7 +88,7 @@ export function LawsuitExpertsFinancialsSection({
               value={values.judicialFees}
               onChange={(event) => onChange("judicialFees", event.target.value)}
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {formatEgp(Number(values.judicialFees) || 0, locale)} {tDash("egp")}
             </p>
             {errors?.judicialFees && (
@@ -99,7 +99,7 @@ export function LawsuitExpertsFinancialsSection({
       </ManagerRoleGuard>
 
       <div className="flex items-center justify-between gap-4 border-t border-purple-100 pt-4">
-        <Label htmlFor="isAtExperts" className="cursor-pointer font-medium text-slate-800">
+        <Label htmlFor="isAtExperts" className="cursor-pointer font-medium text-foreground">
           {t("referToExperts")}
         </Label>
         <Switch

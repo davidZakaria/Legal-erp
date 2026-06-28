@@ -6,6 +6,7 @@ import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { hasPermission } from "@/lib/permissions";
+import { notifyGafiTaskCreatedNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 const VALID_TASK_TYPES = ["ASSEMBLY", "TRADEMARK"] as const;
 
@@ -47,6 +48,8 @@ export async function createGafiTask(formData: FormData) {
   });
 
   await logActivity(session.user.id, "CREATE", "GAFITask", task.id);
+
+  notifyGafiTaskCreatedNonBlocking(title, deadline);
 
   revalidatePath("/ar/gafi");
   revalidatePath("/en/gafi");

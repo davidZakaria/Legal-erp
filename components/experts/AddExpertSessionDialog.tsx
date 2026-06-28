@@ -82,17 +82,13 @@ export function AddExpertSessionDialog({
 
   return (
     <>
-      <Button
-        size="sm"
-        className="gap-2 bg-purple-900 hover:bg-purple-800"
-        onClick={() => setOpen(true)}
-      >
+      <Button size="sm" className="gap-2" onClick={() => setOpen(true)}>
         <Plus className="h-4 w-4" />
         {t("addExpertSession")}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md border-slate-200">
+        <DialogContent className="max-w-md border-border">
           <DialogHeader>
             <DialogTitle>{t("addExpertSessionTitle")}</DialogTitle>
             <DialogDescription>{caseLabel}</DialogDescription>
@@ -144,15 +140,11 @@ export function AddExpertSessionDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 {tCommon("cancel")}
               </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="bg-purple-900 hover:bg-purple-800"
-              >
+              <Button type="submit" disabled={submitting}>
                 {submitting ? tCommon("loading") : t("addSessionSubmit")}
               </Button>
             </div>

@@ -60,7 +60,7 @@ export function QuickAddMenu({
 
   return (
     <>
-      <Button variant="ghost" size="icon" className="relative h-9 w-9 text-slate-600" aria-label={t("notifications")}>
+      <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground" aria-label={t("notifications")}>
         <Bell className="h-5 w-5" />
         <span className="absolute end-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
       </Button>
@@ -74,23 +74,23 @@ export function QuickAddMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onClick={() => setActiveDialog("lawsuit")}>
-            <Scale className="me-2 h-4 w-4 text-slate-600" />
+            <Scale className="me-2 h-4 w-4 text-muted-foreground" />
             {t("newLawsuit")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setActiveDialog("gafi")}>
-            <Building2 className="me-2 h-4 w-4 text-slate-600" />
+            <Building2 className="me-2 h-4 w-4 text-muted-foreground" />
             {t("newGafiTask")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setActiveDialog("poa")}>
-            <ScrollText className="me-2 h-4 w-4 text-slate-600" />
+            <ScrollText className="me-2 h-4 w-4 text-muted-foreground" />
             {t("newPoa")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setActiveDialog("legalTask")}>
-            <CheckCircle className="me-2 h-4 w-4 text-slate-600" />
+            <CheckCircle className="me-2 h-4 w-4 text-muted-foreground" />
             {t("assignTask")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setActiveDialog("execution")}>
-            <Shield className="me-2 h-4 w-4 text-slate-600" />
+            <Shield className="me-2 h-4 w-4 text-muted-foreground" />
             {t("newExecution")}
           </DropdownMenuItem>
         </DropdownMenuContent>

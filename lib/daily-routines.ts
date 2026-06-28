@@ -1,12 +1,15 @@
 import { addDays, endOfDay, startOfDay } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
-import { CourtSessionStatus } from "@prisma/client";
+import { CourtSessionStatus, LegalNoticeDeliveryStatus, LegalTaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  buildSessionReminderBodyHtml,
+  buildTomorrowAgendaBodyHtml,
+  sendLawyerTomorrowAgendaEmail,
+} from "@/lib/notifications/assignment-matrix";
+import {
   getManagerEmails,
-  sendAssignmentEmail,
   sendCriticalAlertEmail,
+  sendOverdueBailiffNoticeReminder,
 } from "@/lib/email";
 
 const CAIRO_TZ = "Africa/Cairo";
@@ -19,51 +22,290 @@ function getTomorrowRangeInCairo(): { start: Date; end: Date } {
   return { start, end };
 }
 
-export async function processDailySessionReminders() {
+export async function processLawyerTomorrowAgenda() {
   const { start, end } = getTomorrowRangeInCairo();
 
-  const sessions = await prisma.courtSession.findMany({
-    where: {
-      sessionDate: { gte: start, lte: end },
-      status: CourtSessionStatus.PENDING,
-      isReminderSent: false,
-    },
-    include: {
-      lawsuit: {
-        include: { assignedLawyer: true },
+  const [sessions, tasks] = await Promise.all([
+    prisma.courtSession.findMany({
+      where: {
+        sessionDate: { gte: start, lte: end },
+        status: CourtSessionStatus.PENDING,
+        isReminderSent: false,
       },
-    },
-  });
+      include: {
+        lawsuit: {
+          include: { assignedLawyer: true },
+        },
+      },
+    }),
+    prisma.legalTask.findMany({
+      where: {
+        deadline: { gte: start, lte: end },
+        status: LegalTaskStatus.PENDING,
+      },
+      include: { assignedLawyer: true },
+    }),
+  ]);
 
   const byLawyer = new Map<
     string,
     {
-      lawyer: (typeof sessions)[0]["lawsuit"]["assignedLawyer"];
+      lawyer: { id: string; name: string; email: string | null };
       sessions: typeof sessions;
+      tasks: typeof tasks;
     }
   >();
 
   for (const session of sessions) {
     const lawyer = session.lawsuit.assignedLawyer;
-    const entry = byLawyer.get(lawyer.id) ?? { lawyer, sessions: [] };
+    const entry = byLawyer.get(lawyer.id) ?? { lawyer, sessions: [], tasks: [] };
     entry.sessions.push(session);
     byLawyer.set(lawyer.id, entry);
   }
 
+  for (const task of tasks) {
+    const lawyer = task.assignedLawyer;
+    const entry = byLawyer.get(lawyer.id) ?? { lawyer, sessions: [], tasks: [] };
+    entry.tasks.push(task);
+    byLawyer.set(lawyer.id, entry);
+  }
+
   const results: Array<{
-    sessionIds: string[];
+    lawyerId: string;
+    lawyerName: string;
+    email: string | null;
+    sessionCount: number;
+    taskCount: number;
+    success: boolean;
+    message: string;
+  }> = [];
+
+  for (const { lawyer, sessions: lawyerSessions, tasks: lawyerTasks } of byLawyer.values()) {
+    if (!lawyer.email) {
+      results.push({
+        lawyerId: lawyer.id,
+        lawyerName: lawyer.name,
+        email: null,
+        sessionCount: lawyerSessions.length,
+        taskCount: lawyerTasks.length,
+        success: false,
+        message: "Lawyer has no email address",
+      });
+      continue;
+    }
+
+    const bodyHtml = buildTomorrowAgendaBodyHtml(
+      lawyer.name,
+      lawyerSessions.map((session) => ({
+        caseNumber: session.lawsuit.caseNumber,
+        year: session.lawsuit.year,
+        courtName: session.lawsuit.courtName,
+        requiredAction: session.requiredAction,
+      })),
+      lawyerTasks.map((task) => ({
+        title: task.title,
+        description: task.description,
+      }))
+    );
+
+    const sendResult = await sendLawyerTomorrowAgendaEmail(lawyer.email, lawyer.name, bodyHtml);
+
+    if (sendResult.success && lawyerSessions.length > 0) {
+      await prisma.courtSession.updateMany({
+        where: { id: { in: lawyerSessions.map((session) => session.id) } },
+        data: { isReminderSent: true },
+      });
+    }
+
+    results.push({
+      lawyerId: lawyer.id,
+      lawyerName: lawyer.name,
+      email: lawyer.email,
+      sessionCount: lawyerSessions.length,
+      taskCount: lawyerTasks.length,
+      success: sendResult.success,
+      message: sendResult.message,
+    });
+  }
+
+  return {
+    sent: results.filter((result) => result.success).length,
+    totalLawyers: byLawyer.size,
+    totalSessions: sessions.length,
+    totalTasks: tasks.length,
+    results,
+  };
+}
+
+/** @deprecated Use processLawyerTomorrowAgenda */
+export async function processDailySessionReminders() {
+  const agenda = await processLawyerTomorrowAgenda();
+  return {
+    sent: agenda.sent,
+    total: agenda.totalSessions,
+    results: agenda.results.map((result) => ({
+      sessionIds: [] as string[],
+      lawyerName: result.lawyerName,
+      email: result.email,
+      success: result.success,
+      message: result.message,
+    })),
+  };
+}
+
+export async function processManagerRiskRadar() {
+  const now = new Date();
+  const in30Days = addDays(now, 30);
+  const in45Days = addDays(now, 45);
+
+  const [expiringContracts, subsidiaries] = await Promise.all([
+    prisma.contract.findMany({
+      where: {
+        status: "ACTIVE",
+        guaranteeExpiryDate: { gte: now, lte: in30Days },
+      },
+      include: { project: { select: { name: true } } },
+      orderBy: { guaranteeExpiryDate: "asc" },
+    }),
+    prisma.subsidiaryCompany.findMany({
+      where: {
+        OR: [
+          { crExpiryDate: { gte: now, lte: in45Days } },
+          { taxCardExpiryDate: { gte: now, lte: in45Days } },
+          { boardExpiryDate: { gte: now, lte: in45Days } },
+        ],
+      },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  if (!expiringContracts.length && !subsidiaries.length) {
+    return {
+      sent: false,
+      totalContracts: 0,
+      totalCompanies: 0,
+      message: "No expiring guarantees or corporate records found",
+    };
+  }
+
+  const managerEmails = await getManagerEmails();
+
+  const contractItems = expiringContracts
+    .map(
+      (contract) =>
+        `<li style="margin-bottom: 10px;">
+          <strong>عقد — ${contract.project.name}</strong> — ${contract.contractorName}<br />
+          انتهاء الضمان: ${contract.guaranteeExpiryDate.toLocaleDateString("ar-EG")} —
+          ${contract.totalValue.toString()} ج.م
+        </li>`
+    )
+    .join("");
+
+  const subsidiaryItems = subsidiaries
+    .map((company) => {
+      const expiring: string[] = [];
+      if (
+        company.crExpiryDate &&
+        company.crExpiryDate >= now &&
+        company.crExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `السجل التجاري — ينتهي ${company.crExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+      if (
+        company.taxCardExpiryDate &&
+        company.taxCardExpiryDate >= now &&
+        company.taxCardExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `البطاقة الضريبية — تنتهي ${company.taxCardExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+      if (
+        company.boardExpiryDate &&
+        company.boardExpiryDate >= now &&
+        company.boardExpiryDate <= in45Days
+      ) {
+        expiring.push(
+          `مجلس الإدارة — ينتهي ${company.boardExpiryDate.toLocaleDateString("ar-EG")}`
+        );
+      }
+      if (!expiring.length) return "";
+      return `<li style="margin-bottom: 12px;">
+        <strong>${company.name}</strong>
+        <ul style="margin: 6px 0 0; padding-right: 20px;">${expiring.map((item) => `<li>${item}</li>`).join("")}</ul>
+      </li>`;
+    })
+    .filter(Boolean)
+    .join("");
+
+  const alertTitle = "🚨 تقرير المخاطر: ضمانات وسجلات تقترب من الانتهاء";
+  const details = `
+    ${expiringContracts.length ? `<p style="margin: 0 0 12px; font-weight: bold;">ضمانات عقود (${expiringContracts.length}) — خلال 30 يوماً:</p><ul style="margin: 0 0 20px; padding-right: 24px;">${contractItems}</ul>` : ""}
+    ${subsidiaryItems ? `<p style="margin: 0 0 12px; font-weight: bold;">سجلات شركات تابعة (${subsidiaries.length}) — خلال 45 يوماً:</p><ul style="margin: 0; padding-right: 24px;">${subsidiaryItems}</ul>` : ""}
+  `;
+
+  const sendResult = await sendCriticalAlertEmail(managerEmails, alertTitle, details);
+
+  return {
+    sent: sendResult.success,
+    totalContracts: expiringContracts.length,
+    totalCompanies: subsidiaries.length,
+    message: sendResult.message,
+  };
+}
+
+/** @deprecated Use processManagerRiskRadar */
+export async function processGuaranteeExpiryAlerts() {
+  const radar = await processManagerRiskRadar();
+  return {
+    sent: radar.sent,
+    total: radar.totalContracts,
+    contracts: [] as string[],
+    message: radar.message,
+  };
+}
+
+/** @deprecated Use processManagerRiskRadar */
+export async function processCorporateGovernanceAlerts() {
+  const radar = await processManagerRiskRadar();
+  return {
+    sent: radar.sent,
+    total: radar.totalCompanies,
+    companies: [] as string[],
+    message: radar.message,
+  };
+}
+
+export async function processOverdueBailiffNoticeReminders() {
+  const todayEnd = endOfDay(new Date());
+
+  const notices = await prisma.legalNotice.findMany({
+    where: {
+      deliveryStatus: LegalNoticeDeliveryStatus.PENDING,
+      followUpDate: { not: null, lte: todayEnd },
+    },
+    include: {
+      assignedLawyer: { select: { id: true, name: true, email: true } },
+    },
+    orderBy: { followUpDate: "asc" },
+  });
+
+  const results: Array<{
+    noticeId: string;
     lawyerName: string;
     email: string | null;
     success: boolean;
     message: string;
   }> = [];
 
-  for (const { lawyer, sessions: lawyerSessions } of byLawyer.values()) {
-    const sessionIds = lawyerSessions.map((session) => session.id);
+  for (const notice of notices) {
+    const lawyer = notice.assignedLawyer;
 
     if (!lawyer.email) {
       results.push({
-        sessionIds,
+        noticeId: notice.id,
         lawyerName: lawyer.name,
         email: null,
         success: false,
@@ -72,33 +314,15 @@ export async function processDailySessionReminders() {
       continue;
     }
 
-    const detailsHtml = buildSessionReminderBodyHtml(
-      lawyer.name,
-      lawyerSessions.map((session) => ({
-        caseNumber: session.lawsuit.caseNumber,
-        year: session.lawsuit.year,
-        courtName: session.lawsuit.courtName,
-        requiredAction: session.requiredAction,
-      }))
-    );
-
-    const sendResult = await sendAssignmentEmail(
+    const sendResult = await sendOverdueBailiffNoticeReminder(
       lawyer.email,
       lawyer.name,
-      "⚖️ تذكير بموعد جلسة غداً",
-      `نذكّركم بمواعيد الجلسات التالية غداً:<br /><br />${detailsHtml}<br />برجاء الحضور وتأكيد (إثبات قرار المحكمة) على النظام فور الانتهاء.`,
-      "⚖️ تذكير هام بموعد جلسة غداً"
+      notice.bailiffOffice,
+      notice.opponentName
     );
 
-    if (sendResult.success) {
-      await prisma.courtSession.updateMany({
-        where: { id: { in: sessionIds } },
-        data: { isReminderSent: true },
-      });
-    }
-
     results.push({
-      sessionIds,
+      noticeId: notice.id,
       lawyerName: lawyer.name,
       email: lawyer.email,
       success: sendResult.success,
@@ -108,160 +332,36 @@ export async function processDailySessionReminders() {
 
   return {
     sent: results.filter((result) => result.success).length,
-    total: sessions.length,
+    total: notices.length,
     results,
   };
 }
 
-export async function processGuaranteeExpiryAlerts() {
-  const now = new Date();
-  const in30Days = addDays(now, 30);
-
-  const expiringContracts = await prisma.contract.findMany({
-    where: {
-      status: "ACTIVE",
-      guaranteeExpiryDate: { gte: now, lte: in30Days },
-    },
-    include: { project: { select: { name: true } } },
-    orderBy: { guaranteeExpiryDate: "asc" },
-  });
-
-  if (!expiringContracts.length) {
-    return {
-      sent: false,
-      total: 0,
-      contracts: [] as string[],
-      message: "No expiring guarantees found",
-    };
-  }
-
-  const managerEmails = await getManagerEmails();
-  const listItems = expiringContracts
-    .map(
-      (contract) =>
-        `<li style="margin-bottom: 10px;">
-          <strong>${contract.project.name}</strong> — ${contract.contractorName}<br />
-          <strong>تاريخ انتهاء الضمان:</strong> ${contract.guaranteeExpiryDate.toLocaleDateString("ar-EG")}<br />
-          <strong>قيمة العقد:</strong> ${contract.totalValue.toString()} جنيه
-        </li>`
-    )
-    .join("");
-
-  const alertTitle = "🚨 إنذار مالي: اقتراب انتهاء خطاب ضمان";
-  const details = `
-    <p style="margin: 0 0 16px;">يوجد <strong>${expiringContracts.length}</strong> عقد/عقود بخطابات ضمان تنتهي خلال 30 يوماً:</p>
-    <ul style="margin: 0; padding-right: 24px;">${listItems}</ul>
-  `;
-
-  const sendResult = await sendCriticalAlertEmail(managerEmails, alertTitle, details);
-
-  return {
-    sent: sendResult.success,
-    total: expiringContracts.length,
-    contracts: expiringContracts.map((contract) => contract.id),
-    message: sendResult.message,
-  };
-}
-
-export async function processCorporateGovernanceAlerts() {
-  const now = new Date();
-  const in45Days = addDays(now, 45);
-
-  const subsidiaries = await prisma.subsidiaryCompany.findMany({
-    where: {
-      OR: [
-        { crExpiryDate: { gte: now, lte: in45Days } },
-        { taxCardExpiryDate: { gte: now, lte: in45Days } },
-        { boardExpiryDate: { gte: now, lte: in45Days } },
-      ],
-    },
-    orderBy: { name: "asc" },
-  });
-
-  if (!subsidiaries.length) {
-    return {
-      sent: false,
-      total: 0,
-      companies: [] as string[],
-      message: "No expiring corporate documents found",
-    };
-  }
-
-  const managerEmails = await getManagerEmails();
-
-  const listItems = subsidiaries
-    .map((company) => {
-      const expiring: string[] = [];
-      if (
-        company.crExpiryDate &&
-        company.crExpiryDate >= now &&
-        company.crExpiryDate <= in45Days
-      ) {
-        expiring.push(
-          `<strong>السجل التجاري</strong> — ينتهي ${company.crExpiryDate.toLocaleDateString("ar-EG")}`
-        );
-      }
-      if (
-        company.taxCardExpiryDate &&
-        company.taxCardExpiryDate >= now &&
-        company.taxCardExpiryDate <= in45Days
-      ) {
-        expiring.push(
-          `<strong>البطاقة الضريبية</strong> — تنتهي ${company.taxCardExpiryDate.toLocaleDateString("ar-EG")}`
-        );
-      }
-      if (
-        company.boardExpiryDate &&
-        company.boardExpiryDate >= now &&
-        company.boardExpiryDate <= in45Days
-      ) {
-        expiring.push(
-          `<strong>مجلس الإدارة</strong> — ينتهي ${company.boardExpiryDate.toLocaleDateString("ar-EG")}`
-        );
-      }
-
-      if (!expiring.length) return "";
-
-      return `<li style="margin-bottom: 12px;">
-        <strong>${company.name}</strong>
-        <ul style="margin: 6px 0 0; padding-right: 20px;">${expiring.map((item) => `<li>${item}</li>`).join("")}</ul>
-      </li>`;
-    })
-    .filter(Boolean)
-    .join("");
-
-  if (!listItems) {
-    return {
-      sent: false,
-      total: 0,
-      companies: [] as string[],
-      message: "No expiring corporate documents found",
-    };
-  }
-
-  const alertTitle =
-    "🚨 إنذار حوكمة: اقتراب موعد تجديد [سجل/بطاقة/مجلس] لشركة تابعة";
-  const details = `
-    <p style="margin: 0 0 16px;">يوجد <strong>${subsidiaries.length}</strong> شركة/شركات تابعة بمستندات تنتهي خلال 45 يوماً:</p>
-    <ul style="margin: 0; padding-right: 24px;">${listItems}</ul>
-  `;
-
-  const sendResult = await sendCriticalAlertEmail(managerEmails, alertTitle, details);
-
-  return {
-    sent: sendResult.success,
-    total: subsidiaries.length,
-    companies: subsidiaries.map((company) => company.id),
-    message: sendResult.message,
-  };
-}
-
 export async function runDailyRoutines() {
-  const [reminders, guarantees, corporate] = await Promise.all([
-    processDailySessionReminders(),
-    processGuaranteeExpiryAlerts(),
-    processCorporateGovernanceAlerts(),
+  const [agenda, riskRadar, bailiffNotices] = await Promise.all([
+    processLawyerTomorrowAgenda(),
+    processManagerRiskRadar(),
+    processOverdueBailiffNoticeReminders(),
   ]);
 
-  return { reminders, guarantees, corporate };
+  return {
+    agenda,
+    riskRadar,
+    bailiffNotices,
+    // Legacy shape for existing consumers
+    reminders: {
+      sent: agenda.sent,
+      total: agenda.totalSessions,
+    },
+    guarantees: {
+      sent: riskRadar.sent,
+      total: riskRadar.totalContracts,
+      message: riskRadar.message,
+    },
+    corporate: {
+      sent: riskRadar.sent,
+      total: riskRadar.totalCompanies,
+      message: riskRadar.message,
+    },
+  };
 }

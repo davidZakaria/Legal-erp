@@ -209,6 +209,49 @@ export async function toggleUserActive(userId: string) {
   return { success: true, isActive: !target.isActive };
 }
 
+export async function toggleUser2FA(userId: string, isEnabled: boolean) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success || gate.session.user.role !== Role.SUPER_ADMIN) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) {
+    return { success: false, error: "User not found" };
+  }
+
+  if (target.role === Role.SUPER_ADMIN && !isEnabled) {
+    return { success: false, error: "Super admins always require 2FA" };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      isTwoFactorEnabled: isEnabled,
+      ...(isEnabled
+        ? {}
+        : {
+            otpCode: null,
+            otpExpiry: null,
+            otpAttempts: 0,
+            otpLockedUntil: null,
+          }),
+    },
+  });
+
+  await logActivity(
+    gate.session.user.id,
+    isEnabled ? "ENABLE_USER_2FA" : "DISABLE_USER_2FA",
+    "User",
+    userId
+  );
+
+  revalidatePath("/ar/admin/users");
+  revalidatePath("/en/admin/users");
+
+  return { success: true, isTwoFactorEnabled: isEnabled };
+}
+
 export async function resetUserPassword(userId: string) {
   const gate = await requireAuthenticatedSession();
   if (!gate.success) {

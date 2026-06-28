@@ -90,13 +90,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.requiresPasswordChange = session.requiresPasswordChange as boolean;
       }
 
-      if (trigger === "update" && token.id && session?.requiresPasswordChange === undefined) {
+      // Keep permissions and role in sync with DB so admin changes apply without re-login.
+      if (token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { requiresPasswordChange: true },
+          select: {
+            role: true,
+            permissions: true,
+            requiresPasswordChange: true,
+            isActive: true,
+          },
         });
-        if (dbUser) {
-          token.requiresPasswordChange = dbUser.requiresPasswordChange;
+        if (dbUser?.isActive) {
+          token.role = dbUser.role;
+          token.permissions = dbUser.permissions;
+          if (trigger !== "update" || session?.requiresPasswordChange === undefined) {
+            token.requiresPasswordChange = dbUser.requiresPasswordChange;
+          }
         }
       }
 

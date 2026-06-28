@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export const FK_DELETE_ERROR =
-  "لا يمكن الحذف لوجود بيانات مرتبطة بهذا السجل.";
+  "عفواً، لا يمكن الحذف لوجود بيانات مرتبطة.";
 
 export type ActionResult =
   | { success: true; id?: string }

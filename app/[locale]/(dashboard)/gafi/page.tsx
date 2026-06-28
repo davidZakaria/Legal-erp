@@ -1,14 +1,23 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canManageGafiTasks } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
 import { Building2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { GafiModuleTabs } from "@/components/gafi/GafiModuleTabs";
 
 export default async function GafiPage() {
   const t = await getTranslations("gafi");
+  const locale = await getLocale();
   const session = await auth();
+
+  if (
+    session?.user &&
+    !(await hasPermission(session.user.id, "GAFI_READ", session.user.role))
+  ) {
+    redirect({ href: "/", locale });
+  }
 
   const [companies, archives, tasks] = await Promise.all([
     prisma.subsidiaryCompany.findMany({ orderBy: { name: "asc" } }),
@@ -47,9 +56,10 @@ export default async function GafiPage() {
     status: task.status,
   }));
 
-  const canManage = session?.user
-    ? canManageGafiTasks(session.user.role)
-    : false;
+  const user = session!.user;
+  const canCreate = await hasPermission(user.id, "GAFI_CREATE", user.role);
+  const canEdit = await hasPermission(user.id, "GAFI_UPDATE", user.role);
+  const canManage = canCreate || canEdit;
 
   return (
     <div>

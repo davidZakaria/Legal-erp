@@ -20,6 +20,8 @@ export type ContractAnalysisResult = {
   totalValue: number;
   guaranteeExpiryDate: string | null;
   penaltyClause: string;
+  projectId: string | null;
+  projectName: string | null;
 };
 
 export function AnalyzeContractDialog({
@@ -82,7 +84,11 @@ export function AnalyzeContractDialog({
 
       onAnalyzed(payload as ContractAnalysisResult, selectedFile);
       resetState();
-      toast.success(t("analyzeSuccess"));
+      if ((payload as ContractAnalysisResult).projectId) {
+        toast.success(t("analyzeSuccessWithProject"));
+      } else {
+        toast.success(t("analyzeSuccess"));
+      }
     } catch {
       setError(t("analyzeError"));
     } finally {
@@ -92,14 +98,14 @@ export function AnalyzeContractDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg border-slate-200">
+      <DialogContent className="max-w-lg border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <FileSearch className="h-5 w-5" />
             </div>
             <div className="text-start">
-              <DialogTitle className="text-slate-900">{t("analyzeTitle")}</DialogTitle>
+              <DialogTitle className="text-foreground">{t("analyzeTitle")}</DialogTitle>
               <DialogDescription>{t("analyzeDescription")}</DialogDescription>
             </div>
           </div>
@@ -122,7 +128,7 @@ export function AnalyzeContractDialog({
               />
             </div>
             {selectedFile && (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
               </p>
             )}
@@ -134,7 +140,7 @@ export function AnalyzeContractDialog({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
               variant="outline"
@@ -145,7 +151,7 @@ export function AnalyzeContractDialog({
             </Button>
             <Button
               type="button"
-              className="gap-2 bg-slate-900 hover:bg-slate-800"
+              className="gap-2"
               onClick={handleAnalyze}
               disabled={analyzing || !selectedFile}
             >

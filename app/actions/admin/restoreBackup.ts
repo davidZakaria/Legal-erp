@@ -42,6 +42,7 @@ async function restoreDatabaseJson(payload: unknown, executorUserId: string) {
       await tx.auditLog.deleteMany({});
       await tx.expense.deleteMany({});
       await tx.legalDocument.deleteMany({});
+      await tx.legalNotice.deleteMany({});
       await tx.lawsuitAttachment.deleteMany({});
       await tx.executionRequest.deleteMany({});
       await tx.courtSession.deleteMany({});
@@ -67,6 +68,7 @@ async function restoreDatabaseJson(payload: unknown, executorUserId: string) {
       await insertRows((a) => tx.subsidiaryCompany.create(a), tables.subsidiaryCompanies);
       await insertRows((a) => tx.gAFITask.create(a), tables.gafiTasks);
       await insertRows((a) => tx.lawsuit.create(a), tables.lawsuits);
+      await insertRows((a) => tx.legalNotice.create(a), tables.legalNotices);
       await insertRows((a) => tx.prosecution.create(a), tables.prosecutions);
       await insertRows((a) => tx.legalTask.create(a), tables.legalTasks);
       await insertRows((a) => tx.powerOfAttorney.create(a), tables.powerOfAttorneys);

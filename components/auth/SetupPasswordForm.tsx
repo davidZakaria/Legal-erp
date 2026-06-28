@@ -63,17 +63,17 @@ export function SetupPasswordForm() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4" dir="rtl">
-      <Card className="w-full max-w-md border-slate-200 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4" dir="rtl">
+      <Card className="w-full max-w-md border-border shadow-lg">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-slate-900 text-white">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <LockKeyhole className="h-7 w-7" />
           </div>
           <div>
-            <CardTitle className="text-xl text-slate-900">
+            <CardTitle className="text-xl text-foreground">
               🔒 تأمين الحساب (إعداد كلمة المرور الخاصة)
             </CardTitle>
-            <CardDescription className="mt-3 text-start leading-relaxed text-slate-600">
+            <CardDescription className="mt-3 text-start leading-relaxed text-muted-foreground">
               مرحباً بك في النظام. لأسباب أمنية وبناءً على سياسة أمن المعلومات، يجب عليك تغيير
               كلمة المرور المؤقتة قبل الدخول للنظام.
             </CardDescription>
@@ -109,7 +109,7 @@ export function SetupPasswordForm() {
             </div>
             <Button
               type="submit"
-              className="h-10 w-full bg-slate-900 hover:bg-slate-800"
+              className="h-10 w-full"
               disabled={submitting}
             >
               {submitting ? "جاري الحفظ..." : "حفظ كلمة المرور والدخول"}

@@ -10,6 +10,10 @@ import {
   revalidateModulePaths,
   type ActionResult,
 } from "@/lib/server-action-utils";
+import {
+  notifyIfLawyerAssigned,
+  notifyProsecutionAssignmentNonBlocking,
+} from "@/lib/notifications/assignment-matrix";
 
 export async function updateProsecution(id: string, formData: FormData): Promise<ActionResult> {
   const gate = await requirePermission("PROSECUTIONS_UPDATE");
@@ -47,6 +51,17 @@ export async function updateProsecution(id: string, formData: FormData): Promise
     where: { id },
     data: { caseNumber, reportNumber, year, policeStation, clientName, issueType, assignedLawyerId },
   });
+
+  notifyIfLawyerAssigned(existing.assignedLawyerId, assignedLawyerId, lawyer, (assigned) =>
+    notifyProsecutionAssignmentNonBlocking(
+      assigned,
+      policeStation,
+      caseNumber,
+      year,
+      issueType,
+      clientName
+    )
+  );
 
   await logActivity(session.user.id, "UPDATE", "Prosecution", id);
   revalidateModulePaths("/prosecutions");

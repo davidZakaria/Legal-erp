@@ -209,7 +209,7 @@ export function SettingsClient({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+        <div className="flex flex-wrap gap-2 border-b border-border pb-2">
           {(
             [
               ["courts", t("tabCourts")],
@@ -222,7 +222,7 @@ export function SettingsClient({
               key={key}
               type="button"
               variant={activeTab === key ? "default" : "outline"}
-              className={activeTab === key ? "bg-slate-900 hover:bg-slate-800" : ""}
+              
               onClick={() => {
                 setActiveTab(key);
                 setSearch("");
@@ -243,7 +243,7 @@ export function SettingsClient({
             />
             <Button
               type="button"
-              className="gap-2 bg-slate-900 hover:bg-slate-800 sm:shrink-0"
+              className="gap-2 sm:shrink-0"
               onClick={openCreateModal}
             >
               <Plus className="h-4 w-4" />
@@ -251,10 +251,10 @@ export function SettingsClient({
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                <TableRow className="bg-muted/80 hover:bg-muted/80">
                   <TableHead>{t("lookupName")}</TableHead>
                   {isProjectTab && <TableHead>{t("projectLocation")}</TableHead>}
                   <TableHead className="w-28 text-end">{t("actions")}</TableHead>
@@ -265,7 +265,7 @@ export function SettingsClient({
                   <TableRow>
                     <TableCell
                       colSpan={isProjectTab ? 3 : 2}
-                      className="py-8 text-center text-slate-500"
+                      className="py-8 text-center text-muted-foreground"
                     >
                       {search.trim() ? t("noSearchResults") : t("noLookups")}
                     </TableCell>
@@ -275,7 +275,7 @@ export function SettingsClient({
                     <TableRow key={row.id}>
                       <TableCell className="font-medium">{row.name}</TableCell>
                       {isProjectTab && (
-                        <TableCell className="text-slate-600">{row.location}</TableCell>
+                        <TableCell className="text-muted-foreground">{row.location}</TableCell>
                       )}
                       <TableCell className="text-end">
                         <div className="flex justify-end gap-1">

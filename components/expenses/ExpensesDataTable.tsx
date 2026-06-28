@@ -74,17 +74,17 @@ export function ExpensesDataTable({
   };
 
   return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="border-b border-slate-100">
-        <CardTitle className="text-base text-slate-900">{t("tableTitle")}</CardTitle>
+    <Card className="border-border shadow-sm">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-base text-foreground">{t("tableTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {data.length === 0 ? (
-          <p className="px-6 py-10 text-center text-sm text-slate-500">{tCommon("noData")}</p>
+          <p className="px-6 py-10 text-center text-sm text-muted-foreground">{tCommon("noData")}</p>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80">
+              <TableRow className="bg-muted/80">
                 <TableHead>{t("date")}</TableHead>
                 <TableHead>{t("description")}</TableHead>
                 <TableHead>{t("amount")}</TableHead>
@@ -194,14 +194,14 @@ export function ExpenseKpiCards({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-slate-600">{t("monthTotal")}</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">{t("monthTotal")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold text-slate-900">
+          <p className="text-3xl font-bold text-foreground">
             {monthTotal.toLocaleString(locale === "ar" ? "ar-EG" : "en-US")}{" "}
-            <span className="text-lg font-medium text-slate-500">{t("currency")}</span>
+            <span className="text-lg font-medium text-muted-foreground">{t("currency")}</span>
           </p>
         </CardContent>
       </Card>

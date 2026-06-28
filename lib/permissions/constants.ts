@@ -1,5 +1,6 @@
 export const PERMISSION_MODULES = [
   "LAWSUITS",
+  "NOTICES",
   "PROSECUTIONS",
   "GAFI",
   "CONTRACTS",
@@ -27,6 +28,8 @@ export const ALL_PERMISSIONS: Permission[] = PERMISSION_MODULES.flatMap((module)
 export const DEFAULT_LAWYER_PERMISSIONS: Permission[] = [
   "LAWSUITS_READ",
   "LAWSUITS_CREATE",
+  "NOTICES_READ",
+  "NOTICES_CREATE",
   "PROSECUTIONS_READ",
   "PROSECUTIONS_CREATE",
   "GAFI_READ",
@@ -41,6 +44,7 @@ export const PERMISSION_MODULE_LABELS: Record<
   { en: string; ar: string }
 > = {
   LAWSUITS: { en: "Lawsuits", ar: "القضايا" },
+  NOTICES: { en: "Legal Notices", ar: "الإنذارات" },
   PROSECUTIONS: { en: "Prosecutions", ar: "النيابات" },
   GAFI: { en: "GAFI", ar: "هيئة الاستثمار" },
   CONTRACTS: { en: "Contracts", ar: "العقود" },

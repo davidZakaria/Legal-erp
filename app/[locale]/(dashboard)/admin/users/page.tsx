@@ -31,8 +31,11 @@ export default async function AdminUsersPage() {
       role: true,
       permissions: true,
       isActive: true,
+      isTwoFactorEnabled: true,
     },
   });
+
+  const isSuperAdmin = session!.user.role === Role.SUPER_ADMIN;
 
   return (
     <div>
@@ -44,7 +47,8 @@ export default async function AdminUsersPage() {
       <UsersAdminPanel
         users={users}
         currentUserId={session!.user.id}
-        canCreateSuperAdmin={session!.user.role === Role.SUPER_ADMIN}
+        canCreateSuperAdmin={isSuperAdmin}
+        canManage2FA={isSuperAdmin}
       />
     </div>
   );

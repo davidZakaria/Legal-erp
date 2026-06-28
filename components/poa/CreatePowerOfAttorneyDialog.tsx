@@ -139,10 +139,10 @@ export function CreatePowerOfAttorneyDialog({
 
   const dialog = (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-lg border-slate-200">
+      <DialogContent className="max-w-lg border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <ScrollText className="h-5 w-5" />
             </div>
             <div className="text-start">
@@ -230,7 +230,7 @@ export function CreatePowerOfAttorneyDialog({
 
           <div className="flex justify-end gap-2 border-t pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>{tCommon("cancel")}</Button>
-            <Button type="submit" disabled={submitting} className="bg-slate-900 hover:bg-slate-800">
+            <Button type="submit" disabled={submitting}>
               {submitting ? tCommon("loading") : isEditMode ? tCommon("save") : t("createSubmit")}
             </Button>
           </div>
@@ -243,7 +243,7 @@ export function CreatePowerOfAttorneyDialog({
 
   return (
     <>
-      <Button className="gap-2 bg-slate-900 hover:bg-slate-800" onClick={() => setOpen(true)}>
+      <Button className="gap-2" onClick={() => setOpen(true)}>
         {t("addPoa")}
       </Button>
       {dialog}

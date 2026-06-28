@@ -70,6 +70,13 @@ enum BackupType {
   MANUAL
 }
 
+enum LegalNoticeDeliveryStatus {
+  PENDING
+  DELIVERED_SUCCESS
+  DELIVERED_REFUSED
+  NOT_FOUND
+}
+
 model User {
   id                     String    @id @default(cuid())
   name                   String
@@ -95,6 +102,7 @@ model User {
   assignedLegalTasks   LegalTask[]        @relation("AssignedLegalTasks")
   assignedPOAs         PowerOfAttorney[]  @relation("AssignedPOAs")
   assignedExecutions   ExecutionRequest[] @relation("AssignedExecutions")
+  assignedLegalNotices LegalNotice[]      @relation("AssignedLegalNotices")
   requestedExpenses    Expense[]          @relation("RequestedExpenses")
   uploadedDocuments    LegalDocument[]    @relation("UploadedDocuments")
 
@@ -139,7 +147,8 @@ model Contract {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  legalNotices LegalNotice[]
 
   @@index([guaranteeExpiryDate])
   @@map("contracts")
@@ -213,8 +222,39 @@ model Lawsuit {
   attachments      LawsuitAttachment[]
   executionRequests ExecutionRequest[]
   expenses         Expense[]
+  legalNotices     LegalNotice[]
 
   @@map("lawsuits")
+}
+
+model LegalNotice {
+  id               String                      @id @default(cuid())
+  noticeNumber     String?                     @map("notice_number")
+  year             String
+  bailiffOffice    String                      @map("bailiff_office")
+  clientName       String                      @map("client_name")
+  opponentName     String                      @map("opponent_name")
+  noticeType       String                      @map("notice_type")
+  submissionDate   DateTime                    @map("submission_date")
+  deliveryStatus   LegalNoticeDeliveryStatus   @default(PENDING) @map("delivery_status")
+  deliveryDate     DateTime?                   @map("delivery_date")
+  followUpDate     DateTime?                   @map("follow_up_date")
+  assignedLawyerId String                      @map("assigned_lawyer_id")
+  contractId       String?                     @map("contract_id")
+  lawsuitId        String?                     @map("lawsuit_id")
+  notes            String?
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  updatedAt        DateTime                    @updatedAt @map("updated_at")
+
+  assignedLawyer User      @relation("AssignedLegalNotices", fields: [assignedLawyerId], references: [id], onDelete: Restrict)
+  contract       Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  lawsuit        Lawsuit?  @relation(fields: [lawsuitId], references: [id], onDelete: SetNull)
+
+  @@index([assignedLawyerId])
+  @@index([contractId])
+  @@index([lawsuitId])
+  @@index([deliveryStatus, followUpDate])
+  @@map("legal_notices")
 }
 
 model LawsuitAttachment {
@@ -376,10 +416,14 @@ model ExpertOfficeLookup {
 }
 
 model BackupLog {
-  id        String     @id @default(cuid())
-  fileName  String     @map("file_name")
-  type      BackupType
-  createdAt DateTime   @default(now()) @map("created_at")
+  id          String     @id @default(cuid())
+  fileName    String     @map("file_name")
+  type        BackupType
+  size        String?
+  files       Int        @default(1) @map("files_count")
+  isEncrypted Boolean    @default(false) @map("is_encrypted")
+  filePath    String?    @map("file_path")
+  createdAt   DateTime   @default(now()) @map("created_at")
 
   @@map("backup_logs")
 }

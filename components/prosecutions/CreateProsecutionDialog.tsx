@@ -130,14 +130,14 @@ export function CreateProsecutionDialog({
 
   const dialog = (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-slate-200">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto border-border">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div className="text-start">
-              <DialogTitle className="text-slate-900">
+              <DialogTitle className="text-foreground">
                 {isEditMode ? t("editTitle") : t("createTitle")}
               </DialogTitle>
               <DialogDescription>
@@ -165,8 +165,8 @@ export function CreateProsecutionDialog({
             </div>
           </div>
 
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <Label htmlFor="reportNumber" className="font-semibold text-slate-900">
+          <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-3">
+            <Label htmlFor="reportNumber" className="font-semibold text-foreground">
               {t("reportNumber")}
             </Label>
             <Input id="reportNumber" className="bg-white font-medium" {...register("reportNumber")} />
@@ -261,11 +261,11 @@ export function CreateProsecutionDialog({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               {tCommon("cancel")}
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-slate-900 hover:bg-slate-800">
+            <Button type="submit" disabled={submitting}>
               {submitting ? tCommon("loading") : isEditMode ? tCommon("save") : t("createSubmit")}
             </Button>
           </div>
@@ -279,7 +279,7 @@ export function CreateProsecutionDialog({
   return (
     <PermissionGuard permission="PROSECUTIONS_CREATE">
       <>
-        <Button className="gap-2 bg-slate-900 hover:bg-slate-800" onClick={() => setOpen(true)}>
+        <Button className="gap-2" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" />
           {t("addProsecution")}
         </Button>

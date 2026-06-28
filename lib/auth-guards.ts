@@ -120,3 +120,25 @@ export async function requireApiPermission(
   }
   return gate;
 }
+
+export async function requireApiAnyPermission(
+  permissions: Permission[]
+): Promise<{ session: AuthenticatedSession } | { response: NextResponse }> {
+  const gate = await requireApiSession();
+  if ("response" in gate) {
+    return gate;
+  }
+
+  for (const permission of permissions) {
+    const allowed = await hasPermission(
+      gate.session.user.id,
+      permission,
+      gate.session.user.role
+    );
+    if (allowed) {
+      return gate;
+    }
+  }
+
+  return { response: NextResponse.json({ error: FORBIDDEN_ERROR }, { status: 403 }) };
+}

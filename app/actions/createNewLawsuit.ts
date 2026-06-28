@@ -12,7 +12,7 @@ import {
   SESSION_TYPE_COURT,
   SESSION_TYPE_EXPERT,
 } from "@/lib/litigation/constants";
-import { notifyAssignmentNonBlocking } from "@/lib/email";
+import { notifyLawsuitAssignmentNonBlocking, notifyExpertsReferralIfNeeded } from "@/lib/notifications/assignment-matrix";
 
 function parseFinancial(value: FormDataEntryValue | null): number {
   const num = value ? Number(value) : 0;
@@ -50,6 +50,7 @@ export async function createNewLawsuit(formData: FormData) {
   const expertFileNumber = (formData.get("expertFileNumber") as string)?.trim() || null;
   const awardedCompensation = parseFinancial(formData.get("awardedCompensation"));
   const judicialFees = parseFinancial(formData.get("judicialFees"));
+  const legalNoticeId = (formData.get("legalNoticeId") as string)?.trim() || null;
 
   const year = parseInt(yearStr, 10);
 
@@ -91,6 +92,12 @@ export async function createNewLawsuit(formData: FormData) {
     return { success: false, error: "Invalid assigned lawyer" };
   }
 
+  if (legalNoticeId) {
+    const notice = await prisma.legalNotice.findUnique({ where: { id: legalNoticeId } });
+    if (!notice) return { success: false, error: "Linked notice not found" };
+    if (notice.lawsuitId) return { success: false, error: "Notice already escalated to a lawsuit" };
+  }
+
   const sessionType = isAtExperts ? SESSION_TYPE_EXPERT : SESSION_TYPE_COURT;
 
   const lawsuit = await prisma.$transaction(async (tx) => {
@@ -125,23 +132,36 @@ export async function createNewLawsuit(formData: FormData) {
       },
     });
 
+    if (legalNoticeId) {
+      await tx.legalNotice.update({
+        where: { id: legalNoticeId },
+        data: { lawsuitId: created.id },
+      });
+    }
+
     return created;
   });
 
   await logActivity(session.user.id, "CREATE", "Lawsuit", lawsuit.id);
 
-  notifyAssignmentNonBlocking(
+  notifyLawsuitAssignmentNonBlocking(
     lawyer,
-    isAtExperts ? "دعوى محالة للخبراء" : "دعوى جديدة",
-    isAtExperts
-      ? `تم تكليفك بمتابعة دعوى رقم ${caseNumber}/${year} — محالة لـ ${expertOffice} (ملف ${expertFileNumber}).`
-      : `تم تكليفك للتو بمتابعة دعوى رقم ${caseNumber} لسنة ${year} — ${courtName} ضد ${opponentName}.`
+    caseNumber,
+    year,
+    courtName,
+    opponentName,
+    isAtExperts,
+    expertOffice
   );
+
+  notifyExpertsReferralIfNeeded(false, isAtExperts, caseNumber, year);
 
   revalidatePath("/ar/litigation");
   revalidatePath("/en/litigation");
   revalidatePath("/ar/experts");
   revalidatePath("/en/experts");
+  revalidatePath("/ar/notices");
+  revalidatePath("/en/notices");
 
   return { success: true, lawsuitId: lawsuit.id };
 }

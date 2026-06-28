@@ -3,13 +3,33 @@ import OpenAI from "openai";
 import { requireApiSession } from "@/lib/auth-guards";
 import { logActivity } from "@/lib/auditLogger";
 import { canCreateContract } from "@/lib/rbac";
+import { prisma } from "@/lib/prisma";
+import { resolveProjectId } from "@/lib/contracts/matchProject";
 
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT =
-  "You are an expert Egyptian legal assistant for New Jersey Developments. Read this Arabic construction contract. Extract and return ONLY a JSON object with these exact keys: `contractorName` (string), `totalValue` (number), `guaranteeExpiryDate` (YYYY-MM-DD), `penaltyClause` (string — the full penalty/delay clause text, often under headings like بند الجزاء، غرامة التأخير، شرط جزائي، or similar; return empty string if not found).";
-
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+function buildSystemPrompt(
+  projects: Array<{ id: string; name: string; location: string }>
+): string {
+  const projectCatalog = JSON.stringify(projects, null, 2);
+
+  return `You are an expert Egyptian legal assistant for New Jersey Developments. Read this Arabic construction contract.
+
+Our registered projects (use ONLY these ids for projectId):
+${projectCatalog}
+
+Extract and return ONLY a JSON object with these exact keys:
+- contractorName (string)
+- totalValue (number)
+- guaranteeExpiryDate (string YYYY-MM-DD, or null)
+- penaltyClause (string — full penalty/delay clause text under headings like بند الجزاء، غرامة التأخير، شرط جزائي; empty string if not found)
+- projectId (string | null — id from the project list when the contract clearly refers to that site/project; null if uncertain)
+- projectNameHint (string — project/site name exactly as written in the contract or filename, e.g. "مشروع جورا", "Green Avenue", "الجلالة"; empty string if not found)
+
+Match projectId when the contract title, parties block, site address, or project description clearly names one of our projects. Prefer projectId over leaving null when confidence is reasonable.`;
+}
 
 function normalizeDateString(value: unknown): string | null {
   if (value == null) return null;
@@ -46,12 +66,25 @@ function parseAnalysisResult(raw: string) {
   const guaranteeExpiryDate = normalizeDateString(json.guaranteeExpiryDate);
   const penaltyClause =
     typeof json.penaltyClause === "string" ? json.penaltyClause.trim() : "";
+  const projectId =
+    typeof json.projectId === "string" && json.projectId.trim()
+      ? json.projectId.trim()
+      : null;
+  const projectNameHint =
+    typeof json.projectNameHint === "string" ? json.projectNameHint.trim() : "";
 
   if (!contractorName || !Number.isFinite(totalValue) || totalValue <= 0) {
     throw new Error("Invalid analysis result");
   }
 
-  return { contractorName, totalValue, guaranteeExpiryDate, penaltyClause };
+  return {
+    contractorName,
+    totalValue,
+    guaranteeExpiryDate,
+    penaltyClause,
+    projectId,
+    projectNameHint,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -90,6 +123,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "File exceeds 10MB limit" }, { status: 400 });
   }
 
+  const projects = await prisma.project.findMany({
+    select: { id: true, name: true, location: true },
+    orderBy: { name: "asc" },
+  });
+
   const buffer = Buffer.from(await file.arrayBuffer());
   let extractedText = "";
 
@@ -124,8 +162,11 @@ export async function POST(request: NextRequest) {
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: extractedText },
+        { role: "system", content: buildSystemPrompt(projects) },
+        {
+          role: "user",
+          content: `PDF filename: ${file.name}\n\nContract text:\n${extractedText}`,
+        },
       ],
     });
 
@@ -142,7 +183,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const { projectId, projectName } = resolveProjectId(projects, {
+    aiProjectId: parsed.projectId,
+    projectNameHint: parsed.projectNameHint,
+    fileName: file.name,
+  });
+
   await logActivity(session.user.id, "ANALYZE_CONTRACT", "Contract", "intake");
 
-  return NextResponse.json(parsed);
+  return NextResponse.json({
+    contractorName: parsed.contractorName,
+    totalValue: parsed.totalValue,
+    guaranteeExpiryDate: parsed.guaranteeExpiryDate,
+    penaltyClause: parsed.penaltyClause,
+    projectId,
+    projectName,
+  });
 }

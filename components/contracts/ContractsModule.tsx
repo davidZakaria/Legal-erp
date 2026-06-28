@@ -3,21 +3,23 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ContractsDataTable, type ContractRow } from "./ContractsDataTable";
-import {
-  CreateContractDialog,
+import { CreateContractDialog,
   type ContractFormInitialData,
   type ProjectOption,
 } from "./CreateContractDialog";
 import { deleteContract } from "@/app/actions/contractCrud";
+import type { LinkedNoticeSummary } from "@/components/notices/ContractLinkedNoticesSection";
 
 export function ContractsModule({
   data,
   projects,
+  linkedNoticesByContractId,
   canUpdate,
   canDelete,
 }: {
   data: ContractRow[];
   projects: ProjectOption[];
+  linkedNoticesByContractId: Record<string, LinkedNoticeSummary[]>;
   canUpdate: boolean;
   canDelete: boolean;
 }) {
@@ -58,6 +60,7 @@ export function ContractsModule({
         prefill={null}
         uploadedFile={null}
         initialData={editItem}
+        linkedNotices={editItem ? linkedNoticesByContractId[editItem.id] ?? [] : []}
       />
     </>
   );

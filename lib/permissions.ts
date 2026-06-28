@@ -1,14 +1,39 @@
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { Permission } from "@/lib/permissions/constants";
+import type {
+  Permission,
+  PermissionAction,
+  PermissionModule,
+} from "@/lib/permissions/constants";
+import { buildPermission } from "@/lib/permissions/constants";
 
 export function isManagerRole(role: Role): boolean {
   return role === Role.SUPER_ADMIN || role === Role.LEGAL_MANAGER;
 }
 
-/** Full record edit/delete (CRUD) — managers and super admins only. */
+/** @deprecated Prefer hasPermission(..., MODULE_UPDATE) / MODULE_DELETE. */
 export function canUpdateOrDeleteRecords(role: Role): boolean {
   return isManagerRole(role);
+}
+
+export function hasPermissionSync(
+  role: Role,
+  permissions: string[],
+  requiredPermission: Permission
+): boolean {
+  if (isManagerRole(role)) {
+    return true;
+  }
+  return permissions.includes(requiredPermission);
+}
+
+export async function hasModulePermission(
+  userId: string,
+  module: PermissionModule,
+  action: PermissionAction,
+  role?: Role
+): Promise<boolean> {
+  return hasPermission(userId, buildPermission(module, action), role);
 }
 
 /** Admin section: user management & system settings — managers only. */

@@ -6,6 +6,11 @@ import { logActivity } from "@/lib/auditLogger";
 import { LawsuitStatus, Role } from "@prisma/client";
 import { LAWSUIT_STATUS_VALUES } from "@/lib/litigation/constants";
 import { revalidateModulePaths, isForeignKeyConstraintError, FK_DELETE_ERROR, type ActionResult } from "@/lib/server-action-utils";
+import {
+  notifyIfLawyerAssigned,
+  notifyLawsuitAssignmentNonBlocking,
+  notifyExpertsReferralIfNeeded,
+} from "@/lib/notifications/assignment-matrix";
 
 function parseFinancial(value: FormDataEntryValue | null): number {
   const num = value ? Number(value) : 0;
@@ -81,6 +86,20 @@ export async function updateLawsuit(id: string, formData: FormData): Promise<Act
       judicialFees,
     },
   });
+
+  notifyIfLawyerAssigned(existing.assignedLawyerId, assignedLawyerId, lawyer, (assigned) =>
+    notifyLawsuitAssignmentNonBlocking(
+      assigned,
+      caseNumber,
+      year,
+      courtName,
+      opponentName,
+      isAtExperts,
+      expertOffice
+    )
+  );
+
+  notifyExpertsReferralIfNeeded(existing.isAtExperts, isAtExperts, caseNumber, year);
 
   await logActivity(session.user.id, "UPDATE", "Lawsuit", id);
   revalidateModulePaths("/litigation", "/experts");

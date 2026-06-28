@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { isManagerOrAbove } from "@/lib/rbac";
 import { Role } from "@prisma/client";
-import { notifyAssignmentNonBlocking } from "@/lib/email";
+import { notifyPowerOfAttorneyAssignmentNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function createPowerOfAttorney(formData: FormData) {
   const gate = await requireAuthenticatedSession();
@@ -54,11 +54,7 @@ export async function createPowerOfAttorney(formData: FormData) {
 
   await logActivity(session.user.id, "CREATE", "PowerOfAttorney", poa.id);
 
-  notifyAssignmentNonBlocking(
-    lawyer,
-    "توكيل رسمي",
-    `تم تكليفك للتو بمتابعة توكيل رقم ${poaNumber} — ${clientName} — ${type}.`
-  );
+  notifyPowerOfAttorneyAssignmentNonBlocking(lawyer, poaNumber, clientName, type);
 
   revalidatePath("/ar");
   revalidatePath("/en");

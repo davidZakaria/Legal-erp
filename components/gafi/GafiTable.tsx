@@ -111,9 +111,9 @@ export function GafiTable({
         </div>
       )}
 
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-white py-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-600">
+      <Card className="overflow-hidden border-border shadow-sm">
+        <CardHeader className="border-b border-border bg-card py-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Radar className="h-4 w-4 text-destructive" />
             {t("deadlineRadar")}
           </CardTitle>
@@ -121,7 +121,7 @@ export function GafiTable({
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+              <TableRow className="bg-muted/80 hover:bg-muted/80">
                 <TableHead>{t("taskType")}</TableHead>
                 <TableHead>{t("taskTitle")}</TableHead>
                 <TableHead>{t("deadline")}</TableHead>
@@ -139,7 +139,7 @@ export function GafiTable({
                   return (
                     <TableRow
                       key={task.id}
-                      className={cn("bg-white", urgent && "bg-destructive/5")}
+                      className={cn("bg-card", urgent && "bg-destructive/5")}
                     >
                       <TableCell>
                         <LegalBadge
@@ -148,7 +148,7 @@ export function GafiTable({
                           locale={locale}
                         />
                       </TableCell>
-                      <TableCell className="font-medium text-slate-900">{task.title}</TableCell>
+                      <TableCell className="font-medium text-foreground">{task.title}</TableCell>
                       <TableCell>
                         <span
                           className={cn(
@@ -219,7 +219,7 @@ export function GafiTable({
                 <TableRow>
                   <TableCell
                     colSpan={canManage ? 5 : 4}
-                    className="py-8 text-center text-slate-500"
+                    className="py-8 text-center text-muted-foreground"
                   >
                     {tCommon("noData")}
                   </TableCell>

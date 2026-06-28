@@ -27,19 +27,24 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    reminders: {
-      sent: result.reminders.sent,
-      total: result.reminders.total,
+    agenda: {
+      sent: result.agenda.sent,
+      totalLawyers: result.agenda.totalLawyers,
+      totalSessions: result.agenda.totalSessions,
+      totalTasks: result.agenda.totalTasks,
     },
-    guarantees: {
-      sent: result.guarantees.sent,
-      total: result.guarantees.total,
-      message: result.guarantees.message,
+    riskRadar: {
+      sent: result.riskRadar.sent,
+      totalContracts: result.riskRadar.totalContracts,
+      totalCompanies: result.riskRadar.totalCompanies,
+      message: result.riskRadar.message,
     },
-    corporate: {
-      sent: result.corporate.sent,
-      total: result.corporate.total,
-      message: result.corporate.message,
+    bailiffNotices: {
+      sent: result.bailiffNotices.sent,
+      total: result.bailiffNotices.total,
     },
+    reminders: result.reminders,
+    guarantees: result.guarantees,
+    corporate: result.corporate,
   });
 }

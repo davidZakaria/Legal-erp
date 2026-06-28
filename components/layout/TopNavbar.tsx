@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Role } from "@prisma/client";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "./SignOutButton";
 import { GlobalSearch } from "./GlobalSearch";
 import { QuickAddMenu } from "./QuickAddMenu";
@@ -47,14 +48,14 @@ export function TopNavbar({
     locale === "ar" ? roleLabels[userRole].ar : roleLabels[userRole].en;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white px-4 shadow-sm md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-4 shadow-sm md:px-6">
       <div className="flex shrink-0 items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Building2 className="h-5 w-5" />
         </div>
         <div className="hidden text-start sm:block">
-          <p className="text-sm font-bold text-slate-900">NJD</p>
-          <p className="text-xs text-slate-500">{t("company")}</p>
+          <p className="text-sm font-bold text-foreground">NJD</p>
+          <p className="text-xs text-muted-foreground">{t("company")}</p>
         </div>
       </div>
 
@@ -72,16 +73,17 @@ export function TopNavbar({
           expertOfficeLookups={expertOfficeLookups}
         />
         <LanguageSwitcher />
+        <ThemeToggle />
         <Separator orientation="vertical" className="hidden h-8 sm:block" />
         <div className="hidden items-center gap-3 sm:flex">
-          <Avatar className="h-9 w-9 border-2 border-slate-200">
-            <AvatarFallback className="bg-slate-100 text-sm font-semibold text-slate-700">
+          <Avatar className="h-9 w-9 border-2 border-border">
+            <AvatarFallback className="bg-muted text-sm font-semibold text-muted-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="text-start">
-            <p className="text-sm font-medium text-slate-900">{userName}</p>
-            <p className="text-xs text-slate-500">{roleLabel}</p>
+            <p className="text-sm font-medium text-foreground">{userName}</p>
+            <p className="text-xs text-muted-foreground">{roleLabel}</p>
           </div>
         </div>
         <SignOutButton />

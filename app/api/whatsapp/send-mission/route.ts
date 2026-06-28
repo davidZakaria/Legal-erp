@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiPermission } from "@/lib/auth-guards";
+import { requireApiAnyPermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import {
@@ -11,7 +11,7 @@ import {
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const gate = await requireApiPermission("PROSECUTIONS_UPDATE");
+  const gate = await requireApiAnyPermission(["PROSECUTIONS_CREATE", "PROSECUTIONS_UPDATE"]);
   if ("response" in gate) return gate.response;
   const session = gate.session;
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   for (const cases of byLawyer.values()) {
     const lawyer = cases[0].assignedLawyer;
 
-    if (!lawyer.email) {
+    if (!lawyer.email?.trim()) {
       results.push({
         lawyerName: lawyer.name,
         success: false,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     const subject = `🚗 مأمورية مجمعة - نيابة/قسم ${policeStation}`;
     const bodyHtml = buildMissionEmailBodyHtml(lawyer.name, policeStation, cases);
     const sendResult = await sendEmail({
-      to: lawyer.email,
+      to: lawyer.email.trim(),
       subject,
       html: buildLegalEmailTemplate(subject, bodyHtml),
     });
@@ -77,15 +77,23 @@ export async function POST(request: NextRequest) {
   }
 
   const sent = results.filter((r) => r.success).length;
+  const firstFailure = results.find((r) => !r.success);
 
   if (sent > 0) {
     await logActivity(session.user.id, "SEND_MISSION", "Prosecution", policeStation);
   }
 
-  return NextResponse.json({
+  const payload = {
     success: sent > 0,
     sent,
     total: results.length,
     results,
-  });
+    error: sent > 0 ? undefined : firstFailure?.message ?? "No emails could be sent",
+  };
+
+  if (sent === 0) {
+    return NextResponse.json(payload, { status: 422 });
+  }
+
+  return NextResponse.json(payload);
 }

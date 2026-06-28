@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
 import { isManagerOrAbove } from "@/lib/rbac";
 import { Role } from "@prisma/client";
-import { notifyAssignmentNonBlocking } from "@/lib/email";
+import { notifyLegalTaskAssignmentNonBlocking } from "@/lib/notifications/assignment-matrix";
 
 export async function createLegalTask(formData: FormData) {
   const gate = await requireAuthenticatedSession();
@@ -47,11 +47,7 @@ export async function createLegalTask(formData: FormData) {
 
   await logActivity(session.user.id, "CREATE", "LegalTask", task.id);
 
-  notifyAssignmentNonBlocking(
-    lawyer,
-    "مهمة قانونية",
-    `تم تكليفك للتو بمتابعة "${title}" — الموعد النهائي: ${deadline.toLocaleDateString("ar-EG")}.`
-  );
+  notifyLegalTaskAssignmentNonBlocking(lawyer, title, deadline);
 
   revalidatePath("/ar");
   revalidatePath("/en");

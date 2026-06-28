@@ -109,14 +109,14 @@ export function GlobalSearch() {
     <>
       <Button
         variant="outline"
-        className="hidden h-9 w-56 justify-between gap-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-white md:flex"
+        className="hidden h-9 w-56 justify-between gap-2 border-border bg-muted/60 text-muted-foreground hover:bg-card md:flex"
         onClick={() => setOpen(true)}
       >
         <span className="flex items-center gap-2 text-sm">
           <Search className="h-4 w-4" />
           {t("placeholder")}
         </span>
-        <kbd className="pointer-events-none hidden rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-500 lg:inline-block">
+        <kbd className="pointer-events-none hidden rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground lg:inline-block">
           Ctrl+K
         </kbd>
       </Button>
@@ -124,7 +124,7 @@ export function GlobalSearch() {
       <Button
         variant="outline"
         size="icon"
-        className="h-9 w-9 border-slate-200 md:hidden"
+        className="h-9 w-9 border-border md:hidden"
         onClick={() => setOpen(true)}
         aria-label={t("placeholder")}
       >
@@ -154,7 +154,7 @@ export function GlobalSearch() {
                         value={`lawsuit-${item.id}-${item.label}`}
                         onSelect={() => navigate(item.href)}
                       >
-                        <Icon className="text-slate-600" />
+                        <Icon className="text-muted-foreground" />
                         <div className="flex min-w-0 flex-col text-start">
                           <span className="truncate font-medium">{item.label}</span>
                           <span className="truncate text-xs text-muted-foreground">
@@ -179,7 +179,7 @@ export function GlobalSearch() {
                           value={`contract-${item.id}-${item.label}`}
                           onSelect={() => navigate(item.href)}
                         >
-                          <Icon className="text-slate-600" />
+                          <Icon className="text-muted-foreground" />
                           <div className="flex min-w-0 flex-col text-start">
                             <span className="truncate font-medium">{item.label}</span>
                             <span className="truncate text-xs text-muted-foreground">
@@ -207,7 +207,7 @@ export function GlobalSearch() {
                           value={`prosecution-${item.id}-${item.label}`}
                           onSelect={() => navigate(item.href)}
                         >
-                          <Icon className="text-slate-600" />
+                          <Icon className="text-muted-foreground" />
                           <div className="flex min-w-0 flex-col text-start">
                             <span className="truncate font-medium">{item.label}</span>
                             <span className="truncate text-xs text-muted-foreground">
@@ -235,7 +235,7 @@ export function GlobalSearch() {
                           value={`gafi-${item.id}-${item.label}`}
                           onSelect={() => navigate(item.href)}
                         >
-                          <Icon className="text-slate-600" />
+                          <Icon className="text-muted-foreground" />
                           <div className="flex min-w-0 flex-col text-start">
                             <span className="truncate font-medium">{item.label}</span>
                             <span className="truncate text-xs text-muted-foreground">

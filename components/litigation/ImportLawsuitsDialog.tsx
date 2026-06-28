@@ -150,7 +150,7 @@ export function ImportLawsuitsDialog({ canImport }: { canImport: boolean }) {
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-lg border-slate-200">
+        <DialogContent className="max-w-lg border-border">
           <DialogHeader>
             <DialogTitle>{t("importTitle")}</DialogTitle>
             <DialogDescription>{t("importDescription")}</DialogDescription>
@@ -167,25 +167,25 @@ export function ImportLawsuitsDialog({ canImport }: { canImport: boolean }) {
                 onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
               />
               {fileName && (
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-muted-foreground">
                   {fileName}
                   {parsedCount > 0 && ` — ${t("importRowCount", { count: parsedCount })}`}
                 </p>
               )}
             </div>
 
-            <div className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+            <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
               {t("importColumnsHint")}
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 {tCommon("cancel")}
               </Button>
               <Button
                 onClick={handleImport}
                 disabled={importing || !rows.length}
-                className="bg-slate-900 hover:bg-slate-800"
+               
               >
                 {importing ? t("importing") : t("importSubmit")}
               </Button>

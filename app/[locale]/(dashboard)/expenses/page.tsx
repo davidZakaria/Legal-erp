@@ -1,4 +1,5 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, getLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -6,13 +7,22 @@ import { Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ExpensesModule } from "@/components/expenses/ExpensesModule";
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
-import { hasPermission, canUpdateOrDeleteRecords } from "@/lib/permissions";
-import { canApproveExpenses, canRequestExpense } from "@/lib/rbac";
+import { hasPermission } from "@/lib/permissions";
+import { canApproveExpenses } from "@/lib/rbac";
 import { ExpenseStatus } from "@prisma/client";
 
 export default async function ExpensesPage() {
   const t = await getTranslations("expenses");
+  const locale = await getLocale();
   const session = await auth();
+
+  if (
+    session?.user &&
+    !(await hasPermission(session.user.id, "FINANCIALS_READ", session.user.role))
+  ) {
+    redirect({ href: "/", locale });
+  }
+
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
@@ -60,10 +70,10 @@ export default async function ExpensesPage() {
   }));
 
   const user = session!.user;
-  const canCreate = canRequestExpense(user.role);
+  const canCreate = await hasPermission(user.id, "FINANCIALS_CREATE", user.role);
   const canApprove = canApproveExpenses(user.role);
-  const canUpdate = canUpdateOrDeleteRecords(user.role);
-  const canDelete = canUpdateOrDeleteRecords(user.role);
+  const canUpdate = await hasPermission(user.id, "FINANCIALS_UPDATE", user.role);
+  const canDelete = await hasPermission(user.id, "FINANCIALS_DELETE", user.role);
 
   return (
     <div className="space-y-6">

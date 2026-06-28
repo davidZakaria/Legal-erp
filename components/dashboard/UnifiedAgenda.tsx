@@ -31,9 +31,9 @@ export async function UnifiedAgenda() {
   }));
 
   return (
-    <Card className="border-slate-200 shadow-sm">
-      <CardHeader className="border-b border-slate-100 pb-4">
-        <CardTitle className="text-lg text-slate-900">{t("unifiedAgenda")}</CardTitle>
+    <Card className="border-border shadow-sm">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle className="text-lg text-foreground">{t("unifiedAgenda")}</CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
         <UnifiedAgendaTabs todayItems={deserializedToday} weekItems={deserializedWeek} />

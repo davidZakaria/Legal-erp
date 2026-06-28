@@ -10,7 +10,7 @@ import { UnifiedAgenda } from "@/components/dashboard/UnifiedAgenda";
 import { GuaranteeRadarCard } from "@/components/dashboard/GuaranteeRadarCard";
 import { isManagerOrAbove } from "@/lib/rbac";
 import { countOverdueItems } from "@/lib/dashboard/agenda";
-import { ExecutionRequestStatus, LawsuitStatus, PowerOfAttorneyStatus } from "@prisma/client";
+import { ExecutionRequestStatus, LawsuitStatus, LegalNoticeDeliveryStatus, PowerOfAttorneyStatus } from "@prisma/client";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
@@ -23,13 +23,19 @@ export default async function DashboardPage() {
     activeLawsuits,
     activePoas,
     pendingExecutions,
+    pendingNotices,
     completedLegalTasks,
     overdueItems,
+    expiringGuaranteeCount,
+    urgentExpiringGuaranteeCount,
     expiringContracts,
     lawsuitsByCourt,
   ] = await Promise.all([
     prisma.lawsuit.count({
-      where: { overallStatus: { in: [LawsuitStatus.ACTIVE, LawsuitStatus.UNDER_REVIEW, LawsuitStatus.RESERVED] } },
+      where: {
+        isAtExperts: false,
+        overallStatus: { in: [LawsuitStatus.ACTIVE, LawsuitStatus.UNDER_REVIEW, LawsuitStatus.RESERVED] },
+      },
     }),
     prisma.powerOfAttorney.count({
       where: { status: PowerOfAttorneyStatus.ACTIVE },
@@ -37,8 +43,23 @@ export default async function DashboardPage() {
     prisma.executionRequest.count({
       where: { status: ExecutionRequestStatus.PENDING_BAILIFF },
     }),
+    prisma.legalNotice.count({
+      where: { deliveryStatus: LegalNoticeDeliveryStatus.PENDING },
+    }),
     prisma.legalTask.count({ where: { status: "COMPLETED" } }),
     countOverdueItems(now),
+    prisma.contract.count({
+      where: {
+        status: "ACTIVE",
+        guaranteeExpiryDate: { gte: now, lte: thirtyDaysFromNow },
+      },
+    }),
+    prisma.contract.count({
+      where: {
+        status: "ACTIVE",
+        guaranteeExpiryDate: { gte: now, lte: addDays(now, 14) },
+      },
+    }),
     prisma.contract.findMany({
       where: {
         status: "ACTIVE",
@@ -50,6 +71,7 @@ export default async function DashboardPage() {
     }),
     prisma.lawsuit.groupBy({
       by: ["courtName"],
+      where: { isAtExperts: false },
       _count: { id: true },
       orderBy: { _count: { id: "desc" } },
     }),
@@ -85,16 +107,21 @@ export default async function DashboardPage() {
         activeLawsuits={activeLawsuits}
         activePoas={activePoas}
         pendingExecutions={pendingExecutions}
+        pendingNotices={pendingNotices}
+        expiringGuarantees={expiringGuaranteeCount}
+        urgentExpiringGuarantees={urgentExpiringGuaranteeCount}
         completedTasks={completedLegalTasks}
         overdueItems={overdueItems}
         assetsLabels={{
           lawsuits: t("activeLawsuits"),
           poas: t("activePoas"),
           executions: t("pendingExecutions"),
+          pendingNotices: t("pendingNotices"),
         }}
         tasksLabels={{
           completed: t("completedTasks"),
           overdue: t("overdueItems"),
+          expiringGuarantees: t("expiringGuarantees"),
         }}
       />
 

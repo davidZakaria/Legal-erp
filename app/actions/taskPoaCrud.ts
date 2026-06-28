@@ -12,6 +12,11 @@ import {
   revalidateModulePaths,
   type ActionResult,
 } from "@/lib/server-action-utils";
+import {
+  notifyIfLawyerAssigned,
+  notifyLegalTaskAssignmentNonBlocking,
+  notifyPowerOfAttorneyAssignmentNonBlocking,
+} from "@/lib/notifications/assignment-matrix";
 
 export async function updatePowerOfAttorney(id: string, formData: FormData): Promise<ActionResult> {
   const gate = await requireAuthenticatedSession();
@@ -54,6 +59,10 @@ export async function updatePowerOfAttorney(id: string, formData: FormData): Pro
     where: { id },
     data: { poaNumber, clientName, type, expiryDate, assignedLawyerId, status },
   });
+
+  notifyIfLawyerAssigned(existing.assignedLawyerId, assignedLawyerId, lawyer, (assigned) =>
+    notifyPowerOfAttorneyAssignmentNonBlocking(assigned, poaNumber, clientName, type)
+  );
 
   await logActivity(session.user.id, "UPDATE", "PowerOfAttorney", id);
   revalidateModulePaths("/");
@@ -115,6 +124,10 @@ export async function updateLegalTask(id: string, formData: FormData): Promise<A
     where: { id },
     data: { title, description, deadline, assignedLawyerId },
   });
+
+  notifyIfLawyerAssigned(existing.assignedLawyerId, assignedLawyerId, lawyer, (assigned) =>
+    notifyLegalTaskAssignmentNonBlocking(assigned, title, deadline)
+  );
 
   await logActivity(session.user.id, "UPDATE", "LegalTask", id);
   revalidateModulePaths("/");
