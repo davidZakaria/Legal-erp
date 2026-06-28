@@ -10,14 +10,18 @@ import {
   LegalDocumentCategory,
   AssemblyType,
   ProsecutionStatus,
+  LegalNoticeDeliveryStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { addDays, subDays, startOfMonth, subMonths } from "date-fns";
+import { addDays, subDays, startOfDay, startOfMonth, subMonths } from "date-fns";
 import fs from "fs/promises";
 import path from "path";
 import { DEFAULT_LAWYER_PERMISSIONS } from "../lib/permissions/constants";
 
 const prisma = new PrismaClient();
+
+/** Demo login password — safe to share with management during presentations */
+const DEMO_PASSWORD = "Njd@2026";
 
 const PDF_STUB = "%PDF-1.4 NJD Legal ERP preview document";
 
@@ -47,6 +51,7 @@ async function clearTransactionalData() {
   await prisma.legalDocument.deleteMany({});
   await prisma.lawsuitAttachment.deleteMany({});
   await prisma.executionRequest.deleteMany({});
+  await prisma.legalNotice.deleteMany({});
   await prisma.courtSession.deleteMany({});
   await prisma.lawsuit.deleteMany({});
   await prisma.prosecution.deleteMany({});
@@ -60,18 +65,21 @@ async function clearTransactionalData() {
 
 async function seedLookups() {
   const courts = [
+    "محكمة القاهرة الاقتصادية",
     "محكمة شمال القاهرة الابتدائية",
     "محكمة جنوب القاهرة الابتدائية",
     "محكمة استئناف القاهرة",
     "المحكمة الاقتصادية",
   ];
   const stations = [
+    "قسم التجمع الخامس",
     "قسم شرطة مدينة نصر",
     "قسم شرطة المعادي",
     "قسم شرطة المطرية",
     "قسم شرطة حلوان",
   ];
   const expertOffices = [
+    "مصلحة الخبراء بالعباسية",
     "مكتب خبراء محكمة شمال القاهرة",
     "مكتب خبراء محكمة استئناف القاهرة",
     "مكتب الدكتور أحمد الخبير",
@@ -101,8 +109,12 @@ async function seedLookups() {
 }
 
 async function main() {
-  const passwordHash = await bcrypt.hash("password123", 12);
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const now = new Date();
+  const guaranteeRadarExpiry = startOfDay(addDays(now, 5));
+  const sessionTomorrow = startOfDay(addDays(now, 1));
+  const noticeFollowUpOverdue = startOfDay(subDays(now, 1));
+  const crExpirySoon = startOfDay(addDays(now, 10));
 
   await seedFiles();
   await seedLookups();
@@ -110,26 +122,36 @@ async function main() {
   const adminUser = await prisma.user.upsert({
     where: { email: "admin@njd.com" },
     update: {
-      name: "أحمد المدير",
+      name: "مدير النظام — NJD",
       passwordHash,
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
+      permissions: [],
       isActive: true,
+      isTwoFactorEnabled: false,
       requiresPasswordChange: false,
     },
     create: {
-      name: "أحمد المدير",
+      name: "مدير النظام — NJD",
       email: "admin@njd.com",
       passwordHash,
       phone: "+201000000001",
-      role: Role.LEGAL_MANAGER,
+      role: Role.SUPER_ADMIN,
       isActive: true,
+      isTwoFactorEnabled: false,
       requiresPasswordChange: false,
     },
   });
 
   const legalManager = await prisma.user.upsert({
     where: { email: "manager@njd.com" },
-    update: { name: "محمد القانوني", passwordHash, isActive: true, requiresPasswordChange: false },
+    update: {
+      name: "محمد القانوني",
+      passwordHash,
+      role: Role.LEGAL_MANAGER,
+      isActive: true,
+      isTwoFactorEnabled: false,
+      requiresPasswordChange: false,
+    },
     create: {
       name: "محمد القانوني",
       email: "manager@njd.com",
@@ -137,6 +159,7 @@ async function main() {
       phone: "+201000000002",
       role: Role.LEGAL_MANAGER,
       isActive: true,
+      isTwoFactorEnabled: false,
       requiresPasswordChange: false,
     },
   });
@@ -148,6 +171,7 @@ async function main() {
       passwordHash,
       permissions: DEFAULT_LAWYER_PERMISSIONS,
       isActive: true,
+      isTwoFactorEnabled: false,
       requiresPasswordChange: false,
     },
     create: {
@@ -158,6 +182,7 @@ async function main() {
       role: Role.LAWYER,
       permissions: DEFAULT_LAWYER_PERMISSIONS,
       isActive: true,
+      isTwoFactorEnabled: false,
       requiresPasswordChange: false,
     },
   });
@@ -204,60 +229,7 @@ async function main() {
     },
   });
 
-  const lawyerDavid = await prisma.user.upsert({
-    where: { email: "david@newjerseyegypt.com" },
-    update: {
-      name: "David — Test Lawyer",
-      passwordHash,
-      role: Role.LAWYER,
-      permissions: DEFAULT_LAWYER_PERMISSIONS,
-      isActive: true,
-      requiresPasswordChange: false,
-    },
-    create: {
-      name: "David — Test Lawyer",
-      email: "david@newjerseyegypt.com",
-      passwordHash,
-      phone: "+201000000010",
-      role: Role.LAWYER,
-      permissions: DEFAULT_LAWYER_PERMISSIONS,
-      isActive: true,
-      requiresPasswordChange: false,
-    },
-  });
-
-  const superAdmin = await prisma.user.upsert({
-    where: { email: "davidsamiii97@gmail.com" },
-    update: {
-      name: "David Sami",
-      passwordHash,
-      role: Role.SUPER_ADMIN,
-      permissions: [],
-      isActive: true,
-      requiresPasswordChange: false,
-    },
-    create: {
-      name: "David Sami",
-      email: "davidsamiii97@gmail.com",
-      passwordHash,
-      phone: "+201000000011",
-      role: Role.SUPER_ADMIN,
-      isActive: true,
-      requiresPasswordChange: false,
-    },
-  });
-
-  await prisma.user.updateMany({
-    where: {
-      role: Role.SUPER_ADMIN,
-      NOT: { email: "davidsamiii97@gmail.com" },
-    },
-    data: { role: Role.LEGAL_MANAGER },
-  });
-
-  void adminUser;
-
-  void lawyerDavid;
+  void legalManager;
 
   const jura = await prisma.project.upsert({
     where: { id: "seed-project-jura" },
@@ -285,7 +257,19 @@ async function main() {
 
   await clearTransactionalData();
 
-  // ── Contracts (guarantee radar: some expiring within 30 days) ──
+  // ── Contracts: radar trigger (guarantee expires in exactly 5 days) ──
+  const radarContract = await prisma.contract.create({
+    data: {
+      projectId: jura.id,
+      contractorName: "شركة المقاولون العرب — عقد رئيسي",
+      totalValue: 25_000_000,
+      penaltyClause: "2% غرامة أسبوعية عن كل أسبوع تأخير + حق فسخ العقد",
+      guaranteeExpiryDate: guaranteeRadarExpiry,
+      status: "ACTIVE",
+      fileUrl: "sample-contract.pdf",
+    },
+  });
+
   await prisma.contract.createMany({
     data: [
       {
@@ -383,11 +367,13 @@ async function main() {
       archiveNumber: "45",
       registrationDate: subMonths(now, 4),
       overallStatus: LawsuitStatus.ACTIVE,
+      awardedCompensation: 1_500_000,
+      judicialFees: 5_000,
       assignedLawyerId: lawyerSarah.id,
       courtSessions: {
         create: [
           {
-            sessionDate: addDays(now, 1),
+            sessionDate: sessionTomorrow,
             requiredAction: "تقديم مذكرة دفاع وطلب تأجيل",
             status: CourtSessionStatus.PENDING,
           },
@@ -428,11 +414,11 @@ async function main() {
       registrationDate: subMonths(now, 8),
       overallStatus: LawsuitStatus.RESERVED,
       isAtExperts: true,
-      expertOffice: "خبراء وزارة العدل بالعباسية",
+      expertOffice: "مصلحة الخبراء بالعباسية",
       expertName: "م/ محمد فتحي",
       expertFileNumber: "884/2024",
-      awardedCompensation: 250000,
-      judicialFees: 15000,
+      awardedCompensation: 250_000,
+      judicialFees: 15_000,
       assignedLawyerId: lawyerSarah.id,
       courtSessions: {
         create: [
@@ -542,12 +528,46 @@ async function main() {
     },
   });
 
+  // ── Legal notices (overdue bailiff follow-up demo) ──
+  await prisma.legalNotice.createMany({
+    data: [
+      {
+        noticeNumber: "2847",
+        year: "2025",
+        bailiffOffice: "محكمة جنوب القاهرة — إدارة التحصيل",
+        clientName: "NJD - مشروع جورا",
+        opponentName: "مقاول الباطن — أعمال تشطيبات",
+        noticeType: "إنذار بالأداء",
+        submissionDate: subDays(now, 14),
+        deliveryStatus: LegalNoticeDeliveryStatus.PENDING,
+        followUpDate: noticeFollowUpOverdue,
+        assignedLawyerId: lawyerSarah.id,
+        contractId: radarContract.id,
+        notes: "متابعة عاجلة — تجاوز موعد متابعة المحضر",
+      },
+      {
+        noticeNumber: "3102",
+        year: "2025",
+        bailiffOffice: "محكمة القاهرة الاقتصادية — محضر قضائي",
+        clientName: "NJD",
+        opponentName: "شركة المنافس للتطوير العقاري",
+        noticeType: "مطالبات مالية",
+        submissionDate: subDays(now, 7),
+        deliveryStatus: LegalNoticeDeliveryStatus.DELIVERED_SUCCESS,
+        deliveryDate: subDays(now, 3),
+        followUpDate: addDays(now, 14),
+        assignedLawyerId: lawyerSarah.id,
+        lawsuitId: lawsuitEconomic.id,
+      },
+    ],
+  });
+
   // ── Subsidiary companies & assembly archive ──
   const subsidiaryNjd = await prisma.subsidiaryCompany.create({
     data: {
       name: "NJD للتطوير العقاري",
       commercialRegister: "123456",
-      crExpiryDate: addDays(now, 35),
+      crExpiryDate: crExpirySoon,
       taxCard: "987-654-321",
       taxCardExpiryDate: addDays(now, 52),
       boardExpiryDate: addDays(now, 90),
@@ -591,7 +611,7 @@ async function main() {
         caseNumber: "9012",
         reportNumber: "1245/2025",
         year: 2025,
-        policeStation: "قسم شرطة التجمع الخامس",
+        policeStation: "قسم التجمع الخامس",
         clientName: "NJD - مشروع جورا",
         issueType: "شيك بدون رصيد",
         status: ProsecutionStatus.POLICE_REPORT,
@@ -825,7 +845,7 @@ async function main() {
         title: "صيغة إنذار رسمي على محل",
         category: LegalDocumentCategory.INTERNAL_MEMO,
         fileUrl: "/uploads/library/defense-memo-template.pdf",
-        uploadedById: superAdmin.id,
+        uploadedById: adminUser.id,
       },
       {
         title: "نموذج محضر جمعية عمومية",
@@ -843,7 +863,7 @@ async function main() {
         title: "قانون 119 لسنة 2008 - المناقصات",
         category: LegalDocumentCategory.LAWS,
         fileUrl: "/uploads/library/building-law-excerpt.pdf",
-        uploadedById: superAdmin.id,
+        uploadedById: adminUser.id,
       },
       {
         title: "قانون 4 لسنة 1996 - تنظيم المباني",
@@ -857,8 +877,8 @@ async function main() {
   // ── Audit log samples ──
   await prisma.auditLog.createMany({
     data: [
-      { userId: superAdmin.id, action: "CREATE", entityName: "Lawsuit", entityId: lawsuitEconomic.id, timestamp: subMonths(now, 4) },
-      { userId: legalManager.id, action: "CREATE", entityName: "Contract", entityId: jura.id, timestamp: subMonths(now, 2) },
+      { userId: adminUser.id, action: "CREATE", entityName: "Lawsuit", entityId: lawsuitEconomic.id, timestamp: subMonths(now, 4) },
+      { userId: legalManager.id, action: "CREATE", entityName: "Contract", entityId: radarContract.id, timestamp: subMonths(now, 2) },
       { userId: lawyerSarah.id, action: "SESSION_OUTCOME", entityName: "CourtSession", entityId: "seed", timestamp: subDays(now, 7) },
       { userId: legalManager.id, action: "APPROVE", entityName: "Expense", entityId: "seed", timestamp: subDays(now, 8) },
       { userId: legalManager.id, action: "UPLOAD", entityName: "LegalDocument", entityId: "seed", timestamp: subDays(now, 14) },
@@ -867,22 +887,24 @@ async function main() {
     ],
   });
 
-  console.log("✓ Seed completed — full preview dataset loaded.");
+  console.log("✅ Seeding Complete!");
   console.log("");
-  console.log("Login credentials (password: password123):");
-  console.log("  admin@njd.com      — Legal Manager");
-  console.log("  manager@njd.com    — Legal Manager");
-  console.log("  lawyer@njd.com     — Lawyer (سارة المحامية)");
-  console.log("  omar@njd.com       — Lawyer (عمر الشريف)");
-  console.log("  nada@njd.com       — Lawyer (ندى حسن)");
-  console.log("  david@newjerseyegypt.com — Lawyer (email test)");
-  console.log("  davidsamiii97@gmail.com  — Super Admin");
+  console.log(`Demo login (password: ${DEMO_PASSWORD}):`);
+  console.log("  admin@njd.com   — Super Admin (instant login, no 2FA)");
+  console.log("  lawyer@njd.com  — Lawyer (سارة المحامية)");
   console.log("");
-  console.log("Highlights:");
-  console.log("  • 5 lawsuits across 5 courts, 2 with attachments (1 at experts)");
-  console.log("  • 5 prosecutions (1 archived), 2 subsidiary companies, 5 GAFI tasks");
-  console.log("  • 7 expenses, 8 library docs, 3 POAs, 3 execution requests");
-  console.log("  • Overdue sessions/tasks for dashboard agenda + performance KPIs");
+  console.log("Optional accounts (same password):");
+  console.log("  manager@njd.com — Legal Manager");
+  console.log("  omar@njd.com    — Lawyer");
+  console.log("  nada@njd.com    — Lawyer");
+  console.log("");
+  console.log("Demo highlights:");
+  console.log(`  • Guarantee radar: contract expires ${guaranteeRadarExpiry.toISOString().slice(0, 10)} (5 days)`);
+  console.log(`  • Lawsuit 1234/2025: compensation 1,500,000 EGP, session tomorrow`);
+  console.log(`  • Lawsuit 5678/2024: at experts (مصلحة الخبراء بالعباسية)`);
+  console.log(`  • Legal notice #2847: overdue bailiff follow-up (${noticeFollowUpOverdue.toISOString().slice(0, 10)})`);
+  console.log(`  • Subsidiary CR expiry: ${crExpirySoon.toISOString().slice(0, 10)} (10 days)`);
+  console.log("  • 5 lawsuits, 6 contracts, 5 prosecutions, 7 expenses, 8 library docs");
 }
 
 main()
