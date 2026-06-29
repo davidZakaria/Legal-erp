@@ -62,6 +62,10 @@ export function SecurityAdminPanel({ turnstile }: { turnstile: TurnstileStatus }
             </div>
           )}
 
+          <div className="rounded-lg border border-amber-200/60 bg-amber-50/80 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+            {t("turnstilePreClearanceHint")}
+          </div>
+
           {turnstile.siteKeyPreview && (
             <div className="rounded-lg border bg-muted/80 p-4">
               <p className="text-sm font-medium text-muted-foreground">

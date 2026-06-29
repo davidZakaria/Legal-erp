@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,18 @@ export default function LoginPage() {
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
   const router = useRouter();
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dbDown, setDbDown] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const resetTurnstileWidget = useCallback(() => {
+    setTurnstileToken(null);
+    turnstileRef.current?.reset();
+  }, []);
 
   useEffect(() => {
     fetch("/api/health/db")
@@ -54,7 +60,16 @@ export default function LoginPage() {
       const initResult = await initiateLogin(trimmedEmail, password, turnstileToken);
 
       if (!initResult.success) {
-        setError(initResult.error ?? t("loginError"));
+        if (initResult.resetTurnstile) {
+          resetTurnstileWidget();
+        }
+        setError(
+          initResult.error === "Invalid credentials"
+            ? t("loginError")
+            : initResult.error === "Turnstile verification failed"
+              ? t("turnstileFailed")
+              : initResult.error
+        );
         return;
       }
 
@@ -79,10 +94,12 @@ export default function LoginPage() {
       });
 
       if (!signInResult.success) {
+        resetTurnstileWidget();
         setError(t("loginError"));
       }
     } catch (error) {
       console.error("[login] Unexpected error:", error);
+      resetTurnstileWidget();
       setError(t("loginError"));
     } finally {
       setLoading(false);
@@ -134,6 +151,7 @@ export default function LoginPage() {
             {turnstileSiteKey && (
               <div className="flex justify-center">
                 <Turnstile
+                  ref={turnstileRef}
                   siteKey={turnstileSiteKey}
                   options={{ refreshExpired: "auto" }}
                   onSuccess={(token) => setTurnstileToken(token)}

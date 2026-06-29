@@ -78,6 +78,11 @@ export async function hasValidTurnstilePassCookie(email: string): Promise<boolea
   return parsed?.email === email.trim().toLowerCase();
 }
 
+export async function clearTurnstilePassCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
+}
+
 export async function consumeTurnstilePassCookie(email: string): Promise<boolean> {
   const cookieStore = await cookies();
   const raw = cookieStore.get(COOKIE_NAME)?.value;

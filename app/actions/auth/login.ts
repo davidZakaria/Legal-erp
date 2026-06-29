@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendTwoFactorOtpEmail } from "@/lib/email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { setTurnstilePassCookie } from "@/lib/turnstile-pass";
+import { setTurnstilePassCookie, clearTurnstilePassCookie } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
 import {
   createTwoFactorPassToken,
@@ -27,7 +27,7 @@ export type InitiateLoginResult =
       pendingLoginToken: string;
       devOtp?: string;
     }
-  | { success: false; error: string };
+  | { success: false; error: string; resetTurnstile?: boolean };
 
 export async function initiateLogin(
   email: string,
@@ -37,22 +37,6 @@ export async function initiateLogin(
   const trimmedEmail = email.trim().toLowerCase();
   if (!trimmedEmail || !password) {
     return { success: false, error: "Invalid credentials" };
-  }
-
-  const headerList = await headers();
-  const forwardedFor = headerList.get("x-forwarded-for");
-  const remoteIp =
-    forwardedFor?.split(",")[0]?.trim() ?? headerList.get("x-real-ip") ?? undefined;
-
-  const turnstileOk = await verifyTurnstileToken(turnstileToken, remoteIp);
-  if (!turnstileOk) {
-    return { success: false, error: "Turnstile verification failed" };
-  }
-
-  const turnstileCookieSet = await setTurnstilePassCookie(trimmedEmail);
-  if (!turnstileCookieSet) {
-    console.error("[Turnstile] Could not set pass cookie — check AUTH_SECRET");
-    return { success: false, error: "Server auth misconfigured" };
   }
 
   const user = await prisma.user.findUnique({ where: { email: trimmedEmail } });
@@ -65,12 +49,37 @@ export async function initiateLogin(
     return { success: false, error: "Invalid credentials" };
   }
 
+  const headerList = await headers();
+  const forwardedFor = headerList.get("x-forwarded-for");
+  const remoteIp =
+    forwardedFor?.split(",")[0]?.trim() ?? headerList.get("x-real-ip") ?? undefined;
+
+  const turnstileOk = await verifyTurnstileToken(turnstileToken, remoteIp);
+  if (!turnstileOk) {
+    return {
+      success: false,
+      error: "Turnstile verification failed",
+      resetTurnstile: true,
+    };
+  }
+
+  const turnstileCookieSet = await setTurnstilePassCookie(trimmedEmail);
+  if (!turnstileCookieSet) {
+    console.error("[Turnstile] Could not set pass cookie — check AUTH_SECRET");
+    return { success: false, error: "Server auth misconfigured", resetTurnstile: true };
+  }
+
+  const failAfterTurnstile = async (error: string, resetTurnstile = false) => {
+    await clearTurnstilePassCookie();
+    return { success: false, error, resetTurnstile };
+  };
+
   if (!userRequiresTwoFactor(user)) {
     return { success: true, requires2FA: false };
   }
 
   if (user.otpLockedUntil && user.otpLockedUntil > new Date()) {
-    return { success: false, error: "Too many attempts. Try again later." };
+    return failAfterTurnstile("Too many attempts. Try again later.", true);
   }
 
   const otp = String(randomInt(100000, 999999));
@@ -107,10 +116,10 @@ export async function initiateLogin(
       console.warn("[dev 2FA] Email delivery failed — use the OTP printed above.");
       const pendingLoginToken = createPendingLoginToken(trimmedEmail, password);
       if (!pendingLoginToken) {
-        return {
-          success: false,
-          error: "Server auth is misconfigured (AUTH_SECRET). Restart the dev server after updating .env.",
-        };
+        return failAfterTurnstile(
+          "Server auth is misconfigured (AUTH_SECRET). Restart the dev server after updating .env.",
+          true
+        );
       }
       return {
         success: true,
@@ -120,15 +129,15 @@ export async function initiateLogin(
         devOtp: otp,
       };
     }
-    return { success: false, error: emailResult.message };
+    return failAfterTurnstile(emailResult.message, true);
   }
 
   const pendingLoginToken = createPendingLoginToken(trimmedEmail, password);
   if (!pendingLoginToken) {
-    return {
-      success: false,
-      error: "Server auth is misconfigured (AUTH_SECRET). Restart the dev server after updating .env.",
-    };
+    return failAfterTurnstile(
+      "Server auth is misconfigured (AUTH_SECRET). Restart the dev server after updating .env.",
+      true
+    );
   }
 
   return {
