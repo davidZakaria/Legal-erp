@@ -18,17 +18,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateSecondaryEmail } from "@/app/actions/auth/updateSecondaryEmail";
 
-const schema = z.object({
-  secondaryEmail: z
-    .string()
-    .min(1, "البريد الإلكتروني مطلوب")
-    .email("صيغة البريد الإلكتروني غير صحيحة")
-    .refine((value) => value.trim().toLowerCase().endsWith("@gmail.com"), {
-      message: "يجب استخدام بريد Gmail (مثال: name@gmail.com)",
-    }),
-});
+function buildSchema(primaryEmail: string) {
+  const primary = primaryEmail.trim().toLowerCase();
+  return z.object({
+    secondaryEmail: z
+      .string()
+      .min(1, "البريد الإلكتروني مطلوب")
+      .email("صيغة البريد الإلكتروني غير صحيحة")
+      .transform((value) => value.trim().toLowerCase())
+      .refine((value) => value.endsWith("@gmail.com"), {
+        message: "يجب استخدام بريد Gmail (مثال: name@gmail.com)",
+      })
+      .refine((value) => value !== primary, {
+        message: "البريد الاحتياطي يجب أن يختلف عن البريد الرئيسي للحساب",
+      }),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 export function SecondaryEmailDialog({
   open,
@@ -37,9 +44,11 @@ export function SecondaryEmailDialog({
 }: {
   open: boolean;
   primaryEmail: string;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const schema = buildSchema(primaryEmail);
 
   const {
     register,
@@ -52,14 +61,21 @@ export function SecondaryEmailDialog({
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
+    setServerError(null);
     try {
       const result = await updateSecondaryEmail(values.secondaryEmail);
       if (!result.success) {
-        toast.error(result.error ?? "تعذر حفظ البريد الاحتياطي");
+        const message = result.error ?? "تعذر حفظ البريد الاحتياطي";
+        setServerError(message);
+        toast.error(message);
         return;
       }
       toast.success("تم حفظ البريد الاحتياطي لرمز التحقق الثنائي");
-      onComplete();
+      await onComplete();
+    } catch {
+      const message = "تعذر حفظ البريد الاحتياطي. حاول مرة أخرى.";
+      setServerError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -98,6 +114,12 @@ export function SecondaryEmailDialog({
               <p className="text-sm text-destructive">{errors.secondaryEmail.message}</p>
             )}
           </div>
+
+          {serverError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
+              {serverError}
+            </p>
+          )}
 
           <Button type="submit" className="h-10 w-full" disabled={submitting}>
             {submitting ? "جاري الحفظ..." : "حفظ والدخول للنظام"}

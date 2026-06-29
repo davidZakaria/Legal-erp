@@ -54,13 +54,6 @@ export default async function proxy(request: NextRequest) {
   if (isPublicPath) {
     const user = await getSessionUser(request);
 
-    if (pathWithoutLocale === "/setup-password" && user) {
-      if (!user.requiresPasswordChange) {
-        return NextResponse.redirect(new URL(`/${locale}`, request.url));
-      }
-      return intlMiddleware(request);
-    }
-
     if (
       user &&
       user.requiresPasswordChange &&
@@ -80,9 +73,8 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user.requiresPasswordChange) {
-    return NextResponse.redirect(new URL(`/${locale}/setup-password`, request.url));
-  }
+  // requiresPasswordChange is enforced in dashboard/auth layouts (JWT synced from DB).
+  // Do not redirect here — stale JWT after setup-password caused redirect loops.
 
   if (pathWithoutLocale.startsWith("/audit-logs")) {
     if (!canViewAuditLogs(user.role)) {

@@ -15,7 +15,7 @@ export async function updateSecondaryEmail(
 ): Promise<{ success: boolean; error?: string }> {
   const gate = await requireAuthenticatedOnly();
   if (!gate.success) {
-    return { success: false, error: gate.error };
+    return { success: false, error: "يجب تسجيل الدخول أولاً" };
   }
 
   const session = gate.session;
@@ -39,21 +39,36 @@ export async function updateSecondaryEmail(
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { email: true, requiresPasswordChange: true },
+    select: { email: true, secondaryEmail: true },
   });
 
   if (!user) {
-    return { success: false, error: "Unauthorized" };
-  }
-
-  if (user.requiresPasswordChange) {
-    return { success: false, error: "يجب إعداد كلمة المرور أولاً" };
+    return { success: false, error: "تعذر العثور على الحساب" };
   }
 
   if (normalizeEmail(user.email) === normalized) {
     return {
       success: false,
       error: "البريد الاحتياطي يجب أن يختلف عن البريد الرئيسي للحساب",
+    };
+  }
+
+  if (user.secondaryEmail && normalizeEmail(user.secondaryEmail) === normalized) {
+    return { success: true };
+  }
+
+  const takenByOther = await prisma.user.findFirst({
+    where: {
+      id: { not: session.user.id },
+      OR: [{ email: normalized }, { secondaryEmail: normalized }],
+    },
+    select: { id: true },
+  });
+
+  if (takenByOther) {
+    return {
+      success: false,
+      error: "هذا البريد مستخدم بالفعل في حساب آخر",
     };
   }
 

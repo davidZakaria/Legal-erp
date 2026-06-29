@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { LockKeyhole } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ export function SetupPasswordForm({
   hasSecondaryEmail: boolean;
 }) {
   const { update } = useSession();
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [showSecondaryEmail, setShowSecondaryEmail] = useState(false);
 
@@ -46,8 +48,14 @@ export function SetupPasswordForm({
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
 
-  const finishOnboarding = () => {
-    window.location.assign("/");
+  const finishOnboarding = async () => {
+    try {
+      await update({ requiresPasswordChange: false });
+    } catch {
+      /* session refresh best-effort */
+    }
+    router.push("/");
+    router.refresh();
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -68,7 +76,7 @@ export function SetupPasswordForm({
       toast.success("تم تأمين حسابك بنجاح.");
 
       if (hasSecondaryEmail) {
-        finishOnboarding();
+        await finishOnboarding();
         return;
       }
 
