@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter, Link } from "@/i18n/navigation";
-import { resolvePendingLoginCredentials, verifyOTP, resendOTP } from "@/app/actions/auth/login";
-import { completeSignIn } from "@/lib/auth-client";
+import { resolvePendingLoginCredentials, verifyOTP, resendOTP, finalizeLogin } from "@/app/actions/auth/login";
 import { toast } from "sonner";
 import {
   OTP_RESEND_COOLDOWN_SECONDS,
@@ -113,18 +112,26 @@ function TwoFactorForm() {
         return;
       }
 
-      const signInResult = await completeSignIn({
-        email: credentials.email,
-        password: credentials.password,
-        twoFactorPass: result.passToken,
-        router,
-      });
+      const finalResult = await finalizeLogin(
+        credentials.email,
+        credentials.password,
+        undefined,
+        result.passToken
+      );
 
       sessionStorage.removeItem(PENDING_LOGIN_KEY);
 
-      if (!signInResult.success) {
-        setError(t("loginError"));
+      if (!finalResult.success) {
+        setError(t("signInFailed"));
+        return;
       }
+
+      if (finalResult.requiresPasswordChange) {
+        router.push("/setup-password");
+      } else {
+        router.push("/");
+      }
+      router.refresh();
     } catch {
       setError(t("otpInvalid"));
     } finally {

@@ -102,9 +102,19 @@ export async function updateUser(formData: FormData) {
   const roleRaw = formData.get("role") as string;
   const permissionsRaw = formData.get("permissions") as string;
   const password = (formData.get("password") as string)?.trim();
+  const confirmPassword = (formData.get("confirmPassword") as string)?.trim();
 
   if (!userId || !name || !email) {
     return { success: false, error: "Missing required fields" };
+  }
+
+  if (password || confirmPassword) {
+    if (!password || !confirmPassword) {
+      return { success: false, error: "Enter and confirm the new password" };
+    }
+    if (password !== confirmPassword) {
+      return { success: false, error: "Passwords do not match" };
+    }
   }
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
@@ -184,7 +194,7 @@ export async function updateUser(formData: FormData) {
   revalidatePath("/ar/admin/users");
   revalidatePath("/en/admin/users");
 
-  return { success: true, passwordUpdated };
+  return { success: true, passwordUpdated, email };
 }
 
 export async function toggleUserActive(userId: string) {

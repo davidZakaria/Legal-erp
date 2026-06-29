@@ -6,8 +6,13 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendTwoFactorOtpEmail } from "@/lib/email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { setTurnstilePassCookie, clearTurnstilePassCookie } from "@/lib/turnstile-pass";
+import {
+  createTurnstilePassToken,
+  setTurnstilePassCookie,
+  clearTurnstilePassCookie,
+} from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
+import { auth, signIn } from "@/lib/auth";
 import {
   createTwoFactorPassToken,
   setTwoFactorPassCookie,
@@ -68,7 +73,7 @@ async function issueAndEmailOtp(user: {
 }
 
 export type InitiateLoginResult =
-  | { success: true; requires2FA: false }
+  | { success: true; requires2FA: false; turnstilePass: string }
   | {
       success: true;
       requires2FA: true;
@@ -99,6 +104,7 @@ export async function initiateLogin(
 
   const passwordOk = await bcrypt.compare(password, user.passwordHash);
   if (!passwordOk) {
+    console.error("[auth] initiateLogin: password mismatch for", trimmedEmail);
     return { success: false, error: "Invalid credentials" };
   }
 
@@ -116,6 +122,12 @@ export async function initiateLogin(
     };
   }
 
+  const turnstilePass = createTurnstilePassToken(trimmedEmail);
+  if (!turnstilePass) {
+    console.error("[Turnstile] Could not create pass token — check AUTH_SECRET");
+    return { success: false, error: "Server auth misconfigured", resetTurnstile: true };
+  }
+
   const turnstileCookieSet = await setTurnstilePassCookie(trimmedEmail);
   if (!turnstileCookieSet) {
     console.error("[Turnstile] Could not set pass cookie — check AUTH_SECRET");
@@ -131,7 +143,7 @@ export async function initiateLogin(
   };
 
   if (!userRequiresTwoFactor(user)) {
-    return { success: true, requires2FA: false };
+    return { success: true, requires2FA: false, turnstilePass };
   }
 
   if (user.otpLockedUntil && user.otpLockedUntil > new Date()) {
@@ -157,6 +169,58 @@ export async function initiateLogin(
     email: user.email,
     pendingLoginToken,
     ...(process.env.NODE_ENV === "development" ? { devOtp: otpResult.otp } : {}),
+  };
+}
+
+export type FinalizeLoginResult =
+  | { success: true; requiresPasswordChange: boolean }
+  | { success: false; error: string };
+
+/** Creates the session cookie on the server — avoids fragile client-side signIn. */
+export async function finalizeLogin(
+  email: string,
+  password: string,
+  turnstilePass?: string,
+  twoFactorPass?: string
+): Promise<FinalizeLoginResult> {
+  const trimmedEmail = email.trim().toLowerCase();
+
+  try {
+    const result = await signIn("credentials", {
+      email: trimmedEmail,
+      password,
+      turnstilePass: turnstilePass ?? "",
+      twoFactorPass: twoFactorPass ?? "",
+      redirect: false,
+    });
+
+    if (
+      result &&
+      typeof result === "object" &&
+      "error" in result &&
+      result.error
+    ) {
+      console.error("[auth] finalizeLogin failed:", result.error, trimmedEmail);
+      return { success: false, error: "signInFailed" };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("CredentialsSignin") || message.includes("credential")) {
+      console.error("[auth] finalizeLogin credentials rejected for", trimmedEmail);
+      return { success: false, error: "signInFailed" };
+    }
+    throw error;
+  }
+
+  const session = await auth();
+  if (!session?.user?.email) {
+    console.error("[auth] finalizeLogin: session missing after signIn for", trimmedEmail);
+    return { success: false, error: "signInFailed" };
+  }
+
+  return {
+    success: true,
+    requiresPasswordChange: Boolean(session.user.requiresPasswordChange),
   };
 }
 

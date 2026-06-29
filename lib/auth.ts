@@ -3,7 +3,11 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { consumeTurnstilePassCookie, hasValidTurnstilePassCookie } from "@/lib/turnstile-pass";
+import {
+  consumeTurnstilePassCookie,
+  hasValidTurnstilePassCookie,
+  verifyTurnstilePassToken,
+} from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -14,6 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         turnstileToken: { label: "Turnstile", type: "text" },
+        turnstilePass: { label: "Turnstile Pass", type: "text" },
         twoFactorPass: { label: "Two Factor Pass", type: "text" },
       },
       async authorize(credentials) {
@@ -24,6 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).trim().toLowerCase();
         const password = credentials.password as string;
         const turnstileToken = credentials.turnstileToken as string | undefined;
+        const turnstilePass = credentials.turnstilePass as string | undefined;
         const twoFactorPass = credentials.twoFactorPass as string | undefined;
 
         const user = await prisma.user.findUnique({
@@ -31,6 +37,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user || user.isActive === false) {
+          if (!user) {
+            console.error("[auth] authorize: user not found", email);
+          } else {
+            console.error("[auth] authorize: account inactive", email);
+          }
           return null;
         }
 
@@ -44,16 +55,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             ? verifyTwoFactorPassToken(twoFactorPass, user.id)
             : false;
           if (!cookieOk && !tokenOk) {
+            console.error("[auth] authorize: 2FA pass missing for", email);
             return null;
           }
           if (cookieOk) {
             await consumeTwoFactorPassCookie(user.id);
           }
         } else {
-          const turnstileCookieOk = await hasValidTurnstilePassCookie(email);
-          if (turnstileCookieOk) {
-            await consumeTurnstilePassCookie(email);
-          } else {
+          let turnstileVerified = Boolean(
+            turnstilePass && verifyTurnstilePassToken(turnstilePass, email)
+          );
+
+          if (!turnstileVerified) {
+            const turnstileCookieOk = await hasValidTurnstilePassCookie(email);
+            if (turnstileCookieOk) {
+              await consumeTurnstilePassCookie(email);
+              turnstileVerified = true;
+            }
+          }
+
+          if (!turnstileVerified) {
             const turnstileOk = await verifyTurnstileToken(turnstileToken);
             if (!turnstileOk) {
               console.error("[auth] Turnstile rejected for", email);
@@ -64,6 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) {
+          console.error("[auth] authorize: password mismatch for", email);
           return null;
         }
 

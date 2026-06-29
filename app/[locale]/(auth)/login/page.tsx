@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "@/i18n/navigation";
-import { initiateLogin } from "@/app/actions/auth/login";
-import { completeSignIn } from "@/lib/auth-client";
+import { initiateLogin, finalizeLogin } from "@/app/actions/auth/login";
 import { getTurnstileSiteKey } from "@/lib/turnstile-config";
 import { PENDING_LOGIN_SESSION_MS } from "@/lib/two-factor-config";
 
@@ -90,16 +89,24 @@ export default function LoginPage() {
         return;
       }
 
-      const signInResult = await completeSignIn({
-        email: trimmedEmail,
+      const finalResult = await finalizeLogin(
+        trimmedEmail,
         password,
-        router,
-      });
+        initResult.turnstilePass
+      );
 
-      if (!signInResult.success) {
+      if (!finalResult.success) {
         resetTurnstileWidget();
-        setError(t("loginError"));
+        setError(t("signInFailed"));
+        return;
       }
+
+      if (finalResult.requiresPasswordChange) {
+        router.push("/setup-password");
+      } else {
+        router.push("/");
+      }
+      router.refresh();
     } catch (error) {
       console.error("[login] Unexpected error:", error);
       resetTurnstileWidget();

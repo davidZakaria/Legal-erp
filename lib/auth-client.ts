@@ -7,6 +7,7 @@ export async function completeSignIn(options: {
   email: string;
   password: string;
   turnstileToken?: string | null;
+  turnstilePass?: string;
   twoFactorPass?: string;
   router: AppRouterInstance;
 }): Promise<{ success: boolean; error?: string }> {
@@ -14,12 +15,13 @@ export async function completeSignIn(options: {
     email: options.email.trim().toLowerCase(),
     password: options.password,
     turnstileToken: options.turnstileToken ?? "",
+    turnstilePass: options.turnstilePass ?? "",
     twoFactorPass: options.twoFactorPass ?? "",
     redirect: false,
   });
 
   if (!result || result.error || !result.ok) {
-    return { success: false, error: "loginError" };
+    return { success: false, error: "signInFailed" };
   }
 
   const session = await getSession();

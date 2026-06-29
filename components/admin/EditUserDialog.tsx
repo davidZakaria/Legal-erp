@@ -57,11 +57,18 @@ export function EditUserDialog({
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<Role>(Role.LAWYER);
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [changePassword, setChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (user) {
       setRole(user.role);
       setPermissions(sanitizePermissions(user.permissions));
+      setChangePassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      setError(null);
     }
   }, [user]);
 
@@ -74,6 +81,17 @@ export function EditUserDialog({
     event.preventDefault();
     if (readOnly) return;
 
+    if (changePassword) {
+      if (newPassword.length < 8) {
+        setError(t("passwordMinLength"));
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError(t("passwordMismatch"));
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -85,6 +103,10 @@ export function EditUserDialog({
       "permissions",
       JSON.stringify(role === Role.LAWYER ? permissions : [])
     );
+    if (changePassword) {
+      formData.set("password", newPassword);
+      formData.set("confirmPassword", confirmPassword);
+    }
 
     const result = await updateUser(formData);
     setSubmitting(false);
@@ -92,7 +114,9 @@ export function EditUserDialog({
     if (result.success) {
       onOpenChange(false);
       if (result.passwordUpdated) {
-        toast.success(t("passwordUpdatedSuccess"));
+        toast.success(
+          t("passwordUpdatedSuccess", { email: result.email ?? user.email })
+        );
       } else {
         toast.success(t("saveSuccess"));
       }
@@ -136,27 +160,61 @@ export function EditUserDialog({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">{t("phone")}</Label>
-              <Input
-                id="edit-phone"
-                name="phone"
-                defaultValue={user.phone ?? ""}
-                disabled={readOnly}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-password">{t("newPasswordOptional")}</Label>
-              <Input
-                id="edit-password"
-                name="password"
-                type="password"
-                minLength={8}
-                disabled={readOnly}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-phone">{t("phone")}</Label>
+            <Input
+              id="edit-phone"
+              name="phone"
+              defaultValue={user.phone ?? ""}
+              disabled={readOnly}
+            />
           </div>
+
+          {!readOnly && (
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={changePassword}
+                  onChange={(event) => {
+                    setChangePassword(event.target.checked);
+                    if (!event.target.checked) {
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-border"
+                />
+                {t("changePassword")}
+              </label>
+              {changePassword && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-password">{t("newPassword")}</Label>
+                    <Input
+                      id="edit-password"
+                      type="password"
+                      minLength={8}
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-confirm-password">{t("confirmPassword")}</Label>
+                    <Input
+                      id="edit-confirm-password"
+                      type="password"
+                      minLength={8}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>{t("role")}</Label>
