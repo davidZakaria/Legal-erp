@@ -8,6 +8,8 @@ import { Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { UsersAdminPanel } from "@/components/admin/UsersAdminPanel";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
   const t = await getTranslations("admin");
   const locale = await getLocale();

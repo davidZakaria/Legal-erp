@@ -63,9 +63,21 @@ export function UsersAdminPanel({
 
   const handleToggleActive = async (user: AdminUserRow) => {
     setTogglingId(user.id);
-    await toggleUserActive(user.id);
-    setTogglingId(null);
-    router.refresh();
+    try {
+      const result = await toggleUserActive(user.id);
+      if (result.success) {
+        toast.success(
+          result.isActive ? t("activateUserSuccess") : t("deactivateUserSuccess")
+        );
+        router.refresh();
+        return;
+      }
+      toast.error(result.error ?? t("saveError"));
+    } catch {
+      toast.error(t("saveError"));
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleResetPassword = async (user: AdminUserRow) => {
@@ -175,7 +187,9 @@ export function UsersAdminPanel({
                         <Switch
                           checked={is2FARequired(user)}
                           disabled={
-                            toggling2FAId === user.id || user.role === Role.SUPER_ADMIN
+                            toggling2FAId === user.id ||
+                            user.role === Role.SUPER_ADMIN ||
+                            !user.isActive
                           }
                           onCheckedChange={(checked) => handleToggle2FA(user, checked)}
                           aria-label={t("twoFactorStatus")}
@@ -183,9 +197,11 @@ export function UsersAdminPanel({
                         <span className="text-sm text-muted-foreground">
                           {user.role === Role.SUPER_ADMIN
                             ? t("twoFactorAlwaysRequired")
-                            : user.isTwoFactorEnabled
-                              ? t("twoFactorEnabled")
-                              : t("twoFactorDisabled")}
+                            : !user.isActive
+                              ? t("twoFactorInactiveUser")
+                              : user.isTwoFactorEnabled
+                                ? t("twoFactorEnabled")
+                                : t("twoFactorDisabled")}
                         </span>
                       </div>
                     </TableCell>

@@ -198,7 +198,11 @@ export async function updateUser(formData: FormData) {
 }
 
 export async function toggleUserActive(userId: string) {
-  const session = await assertAdmin();
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success || !canAccessAdminSection(gate.session.user.role)) {
+    return { success: false, error: "Forbidden" };
+  }
+  const session = gate.session;
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) {
@@ -213,9 +217,11 @@ export async function toggleUserActive(userId: string) {
     return { success: false, error: "Cannot modify super admin accounts" };
   }
 
+  const nextActive = !target.isActive;
+
   await prisma.user.update({
     where: { id: userId },
-    data: { isActive: !target.isActive },
+    data: { isActive: nextActive },
   });
 
   await logActivity(
@@ -228,7 +234,7 @@ export async function toggleUserActive(userId: string) {
   revalidatePath("/ar/admin/users");
   revalidatePath("/en/admin/users");
 
-  return { success: true, isActive: !target.isActive };
+  return { success: true, isActive: nextActive };
 }
 
 export async function toggleUser2FA(userId: string, isEnabled: boolean) {
