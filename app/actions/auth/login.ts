@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendTwoFactorOtpEmail } from "@/lib/email";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { createTurnstilePassToken } from "@/lib/turnstile-pass";
+import { setTurnstilePassCookie } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
 import {
   createTwoFactorPassToken,
@@ -19,13 +19,12 @@ const MAX_OTP_ATTEMPTS = 5;
 const OTP_LOCK_MS = 15 * 60 * 1000;
 
 export type InitiateLoginResult =
-  | { success: true; requires2FA: false; turnstilePass: string | null }
+  | { success: true; requires2FA: false }
   | {
       success: true;
       requires2FA: true;
       email: string;
       pendingLoginToken: string;
-      turnstilePass: string | null;
       devOtp?: string;
     }
   | { success: false; error: string };
@@ -50,7 +49,11 @@ export async function initiateLogin(
     return { success: false, error: "Turnstile verification failed" };
   }
 
-  const turnstilePass = createTurnstilePassToken(trimmedEmail);
+  const turnstileCookieSet = await setTurnstilePassCookie(trimmedEmail);
+  if (!turnstileCookieSet) {
+    console.error("[Turnstile] Could not set pass cookie — check AUTH_SECRET");
+    return { success: false, error: "Server auth misconfigured" };
+  }
 
   const user = await prisma.user.findUnique({ where: { email: trimmedEmail } });
   if (!user || !user.isActive) {
@@ -63,7 +66,7 @@ export async function initiateLogin(
   }
 
   if (!userRequiresTwoFactor(user)) {
-    return { success: true, requires2FA: false, turnstilePass };
+    return { success: true, requires2FA: false };
   }
 
   if (user.otpLockedUntil && user.otpLockedUntil > new Date()) {
@@ -114,7 +117,6 @@ export async function initiateLogin(
         requires2FA: true,
         email: user.email,
         pendingLoginToken,
-        turnstilePass,
         devOtp: otp,
       };
     }
@@ -134,7 +136,6 @@ export async function initiateLogin(
     requires2FA: true,
     email: user.email,
     pendingLoginToken,
-    turnstilePass,
     ...(process.env.NODE_ENV === "development" ? { devOtp: otp } : {}),
   };
 }

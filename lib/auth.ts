@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { verifyTurnstilePassToken } from "@/lib/turnstile-pass";
+import { consumeTurnstilePassCookie, hasValidTurnstilePassCookie } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -14,7 +14,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         turnstileToken: { label: "Turnstile", type: "text" },
-        turnstilePass: { label: "Turnstile Pass", type: "text" },
         twoFactorPass: { label: "Two Factor Pass", type: "text" },
       },
       async authorize(credentials) {
@@ -25,7 +24,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).trim().toLowerCase();
         const password = credentials.password as string;
         const turnstileToken = credentials.turnstileToken as string | undefined;
-        const turnstilePass = credentials.turnstilePass as string | undefined;
         const twoFactorPass = credentials.twoFactorPass as string | undefined;
 
         const user = await prisma.user.findUnique({
@@ -52,11 +50,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             await consumeTwoFactorPassCookie(user.id);
           }
         } else {
-          const turnstileAlreadyVerified =
-            turnstilePass && verifyTurnstilePassToken(turnstilePass, email);
-          if (!turnstileAlreadyVerified) {
+          const turnstileCookieOk = await hasValidTurnstilePassCookie(email);
+          if (turnstileCookieOk) {
+            await consumeTurnstilePassCookie(email);
+          } else {
             const turnstileOk = await verifyTurnstileToken(turnstileToken);
             if (!turnstileOk) {
+              console.error("[auth] Turnstile rejected for", email);
               return null;
             }
           }

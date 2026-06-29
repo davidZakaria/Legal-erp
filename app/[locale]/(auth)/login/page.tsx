@@ -75,7 +75,6 @@ export default function LoginPage() {
       const signInResult = await completeSignIn({
         email: trimmedEmail,
         password,
-        turnstilePass: initResult.turnstilePass,
         router,
       });
 
