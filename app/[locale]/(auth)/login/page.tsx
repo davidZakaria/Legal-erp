@@ -67,9 +67,11 @@ export default function LoginPage() {
         setError(
           initResult.error === "Invalid credentials"
             ? t("loginError")
-            : initResult.error === "Turnstile verification failed"
-              ? t("turnstileFailed")
-              : initResult.error
+            : initResult.error === "Account is deactivated"
+              ? t("accountDeactivated")
+              : initResult.error === "Turnstile verification failed"
+                ? t("turnstileFailed")
+                : initResult.error
         );
         return;
       }

@@ -79,6 +79,11 @@ export function UsersAdminPanel({
 
     if (result.success) {
       toast.success(t("resetPasswordSuccess"));
+      if (result.temporaryPassword) {
+        toast.info(t("resetPasswordTempHint", { password: result.temporaryPassword }), {
+          duration: 15000,
+        });
+      }
       router.refresh();
       return;
     }

@@ -157,13 +157,25 @@ export async function updateUser(formData: FormData) {
     role: Role;
     permissions: string[];
     passwordHash?: string;
+    requiresPasswordChange?: boolean;
+    otpCode?: null;
+    otpExpiry?: null;
+    otpAttempts?: number;
+    otpLockedUntil?: null;
   } = { name, email, phone, role, permissions };
 
+  let passwordUpdated = false;
   if (password) {
     if (password.length < 8) {
       return { success: false, error: "Password must be at least 8 characters" };
     }
     data.passwordHash = await bcrypt.hash(password, 10);
+    data.requiresPasswordChange = false;
+    data.otpCode = null;
+    data.otpExpiry = null;
+    data.otpAttempts = 0;
+    data.otpLockedUntil = null;
+    passwordUpdated = true;
   }
 
   await prisma.user.update({ where: { id: userId }, data });
@@ -172,7 +184,7 @@ export async function updateUser(formData: FormData) {
   revalidatePath("/ar/admin/users");
   revalidatePath("/en/admin/users");
 
-  return { success: true };
+  return { success: true, passwordUpdated };
 }
 
 export async function toggleUserActive(userId: string) {
@@ -281,6 +293,8 @@ export async function resetUserPassword(userId: string) {
       requiresPasswordChange: true,
       otpCode: null,
       otpExpiry: null,
+      otpAttempts: 0,
+      otpLockedUntil: null,
     },
   });
 
@@ -289,7 +303,7 @@ export async function resetUserPassword(userId: string) {
   revalidatePath("/ar/admin/users");
   revalidatePath("/en/admin/users");
 
-  return { success: true };
+  return { success: true, temporaryPassword: defaultPassword };
 }
 
 async function countUserReferences(userId: string): Promise<number> {

@@ -23,6 +23,7 @@ import {
 import { PermissionsMatrix } from "@/components/admin/PermissionsMatrix";
 import { updateUser } from "@/app/actions/admin/users";
 import { useRouter } from "@/i18n/navigation";
+import { toast } from "sonner";
 import { sanitizePermissions, type Permission } from "@/lib/permissions/constants";
 
 export type AdminUserRow = {
@@ -90,6 +91,11 @@ export function EditUserDialog({
 
     if (result.success) {
       onOpenChange(false);
+      if (result.passwordUpdated) {
+        toast.success(t("passwordUpdatedSuccess"));
+      } else {
+        toast.success(t("saveSuccess"));
+      }
       router.refresh();
       return;
     }

@@ -89,8 +89,12 @@ export async function initiateLogin(
   }
 
   const user = await prisma.user.findUnique({ where: { email: trimmedEmail } });
-  if (!user || !user.isActive) {
+  if (!user) {
     return { success: false, error: "Invalid credentials" };
+  }
+
+  if (!user.isActive) {
+    return { success: false, error: "Account is deactivated" };
   }
 
   const passwordOk = await bcrypt.compare(password, user.passwordHash);
