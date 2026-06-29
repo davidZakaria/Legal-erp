@@ -9,7 +9,6 @@ import {
   verifyTurnstilePassToken,
 } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
-import { verifyPreAuthToken } from "@/lib/pre-auth-token";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -21,7 +20,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         turnstileToken: { label: "Turnstile", type: "text" },
         turnstilePass: { label: "Turnstile Pass", type: "text" },
         twoFactorPass: { label: "Two Factor Pass", type: "text" },
-        preAuthToken: { label: "Pre Auth", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -33,7 +31,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const turnstileToken = credentials.turnstileToken as string | undefined;
         const turnstilePass = credentials.turnstilePass as string | undefined;
         const twoFactorPass = credentials.twoFactorPass as string | undefined;
-        const preAuthToken = credentials.preAuthToken as string | undefined;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -46,17 +43,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.error("[auth] authorize: account inactive", email);
           }
           return null;
-        }
-
-        if (preAuthToken && verifyPreAuthToken(preAuthToken, email, user.id)) {
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            permissions: user.permissions,
-            requiresPasswordChange: user.requiresPasswordChange,
-          };
         }
 
         const needs2FA = userRequiresTwoFactor(user);

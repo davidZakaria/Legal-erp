@@ -12,14 +12,14 @@ import {
   clearTurnstilePassCookie,
 } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
-import { signIn } from "@/lib/auth";
 import {
   createTwoFactorPassToken,
   setTwoFactorPassCookie,
+  verifyTwoFactorPassToken,
 } from "@/lib/two-factor-cookie";
 import { createPendingLoginToken, consumePendingLoginToken, peekPendingLoginToken } from "@/lib/pending-login";
 import { hasValidTrustedDeviceCookie, setTrustedDeviceCookie } from "@/lib/two-factor-trust";
-import { createPreAuthToken } from "@/lib/pre-auth-token";
+import { establishUserSession } from "@/lib/establish-session";
 
 import {
   OTP_VALIDITY_MS,
@@ -186,67 +186,59 @@ export type FinalizeLoginResult =
   | { success: true; requiresPasswordChange: boolean }
   | { success: false; error: string };
 
-/** Creates the session cookie on the server — avoids fragile client-side signIn. */
+/** Creates the session after credentials (and optional 2FA) were verified. */
 export async function finalizeLogin(
   email: string,
   password: string,
-  turnstilePass?: string,
-  twoFactorPass?: string,
-  preAuthToken?: string
+  options?: { twoFactorPass?: string }
 ): Promise<FinalizeLoginResult> {
   const trimmedEmail = email.trim().toLowerCase();
 
-  try {
-    const result = await signIn("credentials", {
-      email: trimmedEmail,
-      password,
-      turnstilePass: turnstilePass ?? "",
-      twoFactorPass: twoFactorPass ?? "",
-      preAuthToken: preAuthToken ?? "",
-      redirect: false,
-    });
-
-    if (result && typeof result === "object") {
-      if ("ok" in result && result.ok === false) {
-        console.error("[auth] finalizeLogin signIn not ok for", trimmedEmail, result);
-        return { success: false, error: "signInFailed" };
-      }
-      if ("error" in result && result.error) {
-        console.error("[auth] finalizeLogin failed:", result.error, trimmedEmail);
-        return { success: false, error: "signInFailed" };
-      }
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes("CredentialsSignin") || message.includes("credential")) {
-      console.error("[auth] finalizeLogin credentials rejected for", trimmedEmail);
-      return { success: false, error: "signInFailed" };
-    }
-    throw error;
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { email: trimmedEmail },
-    select: {
-      id: true,
-      role: true,
-      isTwoFactorEnabled: true,
-      requiresPasswordChange: true,
-    },
-  });
-
-  if (!dbUser) {
-    console.error("[auth] finalizeLogin: user missing after signIn for", trimmedEmail);
+  const user = await prisma.user.findUnique({ where: { email: trimmedEmail } });
+  if (!user || !user.isActive) {
+    console.error("[auth] finalizeLogin: user missing or inactive for", trimmedEmail);
     return { success: false, error: "signInFailed" };
   }
 
-  if (userRequiresTwoFactor(dbUser)) {
-    await setTrustedDeviceCookie(dbUser.id);
+  const passwordOk = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordOk) {
+    console.error("[auth] finalizeLogin: password mismatch for", trimmedEmail);
+    return { success: false, error: "signInFailed" };
+  }
+
+  const needs2FA = userRequiresTwoFactor(user);
+  if (needs2FA) {
+    const passOk = options?.twoFactorPass
+      ? verifyTwoFactorPassToken(options.twoFactorPass, user.id)
+      : false;
+    const trusted = await hasValidTrustedDeviceCookie(user.id);
+    if (!passOk && !trusted) {
+      console.error("[auth] finalizeLogin: 2FA proof missing for", trimmedEmail);
+      return { success: false, error: "signInFailed" };
+    }
+  }
+
+  try {
+    await establishUserSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions,
+      requiresPasswordChange: user.requiresPasswordChange,
+    });
+  } catch (error) {
+    console.error("[auth] finalizeLogin: could not establish session for", trimmedEmail, error);
+    return { success: false, error: "signInFailed" };
+  }
+
+  if (needs2FA) {
+    await setTrustedDeviceCookie(user.id);
   }
 
   return {
     success: true,
-    requiresPasswordChange: dbUser.requiresPasswordChange,
+    requiresPasswordChange: user.requiresPasswordChange,
   };
 }
 
@@ -276,22 +268,9 @@ export async function loginWithCredentials(
     return initResult;
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
-    select: { id: true },
+  const finalResult = await finalizeLogin(email, password, {
+    ...(initResult.twoFactorPass ? { twoFactorPass: initResult.twoFactorPass } : {}),
   });
-  const preAuthToken = dbUser ? createPreAuthToken(dbUser.id, email) : null;
-  if (!preAuthToken) {
-    return { success: false, error: "Server auth misconfigured", resetTurnstile: true };
-  }
-
-  const finalResult = await finalizeLogin(
-    email,
-    password,
-    initResult.turnstilePass,
-    initResult.twoFactorPass,
-    preAuthToken
-  );
 
   if (!finalResult.success) {
     return { success: false, error: "signInFailed", resetTurnstile: true };

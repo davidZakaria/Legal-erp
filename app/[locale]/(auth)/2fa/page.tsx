@@ -127,12 +127,9 @@ function TwoFactorForm() {
         return;
       }
 
-      const finalResult = await finalizeLogin(
-        credentials.email,
-        credentials.password,
-        undefined,
-        result.passToken
-      );
+      const finalResult = await finalizeLogin(credentials.email, credentials.password, {
+        twoFactorPass: result.passToken,
+      });
 
       clearPendingLoginSession();
       setHasPendingSession(false);
