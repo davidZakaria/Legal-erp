@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "@/i18n/navigation";
-import { initiateLogin, finalizeLogin } from "@/app/actions/auth/login";
+import { loginWithCredentials } from "@/app/actions/auth/login";
 import { getTurnstileSiteKey } from "@/lib/turnstile-config";
 import { PENDING_LOGIN_SESSION_MS } from "@/lib/two-factor-config";
 import { writePendingLoginSession } from "@/lib/pending-login-client";
@@ -57,49 +57,39 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const initResult = await initiateLogin(trimmedEmail, password, turnstileToken);
+      const result = await loginWithCredentials(trimmedEmail, password, turnstileToken);
 
-      if (!initResult.success) {
-        if (initResult.resetTurnstile) {
+      if (!result.success) {
+        if (result.resetTurnstile) {
           resetTurnstileWidget();
         }
         setError(
-          initResult.error === "Invalid credentials"
+          result.error === "Invalid credentials"
             ? t("loginError")
-            : initResult.error === "Account is deactivated"
+            : result.error === "Account is deactivated"
               ? t("accountDeactivated")
-              : initResult.error === "Turnstile verification failed"
+              : result.error === "Turnstile verification failed"
                 ? t("turnstileFailed")
-                : initResult.error
+                : result.error === "signInFailed"
+                  ? t("signInFailed")
+                  : result.error
         );
         return;
       }
 
-      if (initResult.requires2FA) {
+      if (result.requires2FA) {
         writePendingLoginSession({
-          email: initResult.email,
-          pendingLoginToken: initResult.pendingLoginToken,
+          email: result.email,
+          pendingLoginToken: result.pendingLoginToken,
           exp: Date.now() + PENDING_LOGIN_SESSION_MS,
           otpSentAt: Date.now(),
-          devOtp: initResult.devOtp,
+          devOtp: result.devOtp,
         });
-        router.push(`/2fa?email=${encodeURIComponent(initResult.email)}`);
+        router.push(`/2fa?email=${encodeURIComponent(result.email)}`);
         return;
       }
 
-      const finalResult = await finalizeLogin(
-        trimmedEmail,
-        password,
-        initResult.turnstilePass
-      );
-
-      if (!finalResult.success) {
-        resetTurnstileWidget();
-        setError(t("signInFailed"));
-        return;
-      }
-
-      if (finalResult.requiresPasswordChange) {
+      if (result.requiresPasswordChange) {
         router.push("/setup-password");
       } else {
         router.push("/");

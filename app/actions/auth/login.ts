@@ -12,7 +12,7 @@ import {
   clearTurnstilePassCookie,
 } from "@/lib/turnstile-pass";
 import { userRequiresTwoFactor } from "@/lib/auth-utils";
-import { auth, signIn } from "@/lib/auth";
+import { signIn } from "@/lib/auth";
 import {
   createTwoFactorPassToken,
   setTwoFactorPassCookie,
@@ -73,7 +73,7 @@ async function issueAndEmailOtp(user: {
 }
 
 export type InitiateLoginResult =
-  | { success: true; requires2FA: false; turnstilePass: string }
+  | { success: true; requires2FA: false; turnstilePass: string; twoFactorPass?: string }
   | {
       success: true;
       requires2FA: true;
@@ -147,7 +147,12 @@ export async function initiateLogin(
   }
 
   if (await hasValidTrustedDeviceCookie(user.id)) {
-    return { success: true, requires2FA: false, turnstilePass };
+    return {
+      success: true,
+      requires2FA: false,
+      turnstilePass,
+      twoFactorPass: createTwoFactorPassToken(user.id),
+    };
   }
 
   if (user.otpLockedUntil && user.otpLockedUntil > new Date()) {
@@ -198,14 +203,15 @@ export async function finalizeLogin(
       redirect: false,
     });
 
-    if (
-      result &&
-      typeof result === "object" &&
-      "error" in result &&
-      result.error
-    ) {
-      console.error("[auth] finalizeLogin failed:", result.error, trimmedEmail);
-      return { success: false, error: "signInFailed" };
+    if (result && typeof result === "object") {
+      if ("ok" in result && result.ok === false) {
+        console.error("[auth] finalizeLogin signIn not ok for", trimmedEmail, result);
+        return { success: false, error: "signInFailed" };
+      }
+      if ("error" in result && result.error) {
+        console.error("[auth] finalizeLogin failed:", result.error, trimmedEmail);
+        return { success: false, error: "signInFailed" };
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -216,23 +222,72 @@ export async function finalizeLogin(
     throw error;
   }
 
-  const session = await auth();
-  if (!session?.user?.email) {
-    console.error("[auth] finalizeLogin: session missing after signIn for", trimmedEmail);
+  const dbUser = await prisma.user.findUnique({
+    where: { email: trimmedEmail },
+    select: {
+      id: true,
+      role: true,
+      isTwoFactorEnabled: true,
+      requiresPasswordChange: true,
+    },
+  });
+
+  if (!dbUser) {
+    console.error("[auth] finalizeLogin: user missing after signIn for", trimmedEmail);
     return { success: false, error: "signInFailed" };
   }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { email: trimmedEmail },
-    select: { id: true, role: true, isTwoFactorEnabled: true },
-  });
-  if (dbUser && userRequiresTwoFactor(dbUser)) {
+  if (userRequiresTwoFactor(dbUser)) {
     await setTrustedDeviceCookie(dbUser.id);
   }
 
   return {
     success: true,
-    requiresPasswordChange: Boolean(session.user.requiresPasswordChange),
+    requiresPasswordChange: dbUser.requiresPasswordChange,
+  };
+}
+
+export type LoginWithCredentialsResult =
+  | {
+      success: true;
+      requires2FA: true;
+      email: string;
+      pendingLoginToken: string;
+      devOtp?: string;
+    }
+  | { success: true; requires2FA: false; requiresPasswordChange: boolean }
+  | { success: false; error: string; resetTurnstile?: boolean };
+
+/** Single server action for login — keeps session creation in one request. */
+export async function loginWithCredentials(
+  email: string,
+  password: string,
+  turnstileToken: string | null | undefined
+): Promise<LoginWithCredentialsResult> {
+  const initResult = await initiateLogin(email, password, turnstileToken);
+  if (!initResult.success) {
+    return initResult;
+  }
+
+  if (initResult.requires2FA) {
+    return initResult;
+  }
+
+  const finalResult = await finalizeLogin(
+    email,
+    password,
+    initResult.turnstilePass,
+    initResult.twoFactorPass
+  );
+
+  if (!finalResult.success) {
+    return { success: false, error: "signInFailed", resetTurnstile: true };
+  }
+
+  return {
+    success: true,
+    requires2FA: false,
+    requiresPasswordChange: finalResult.requiresPasswordChange,
   };
 }
 
