@@ -50,11 +50,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (needs2FA) {
           const { hasValidTwoFactorPassCookie, consumeTwoFactorPassCookie, verifyTwoFactorPassToken } =
             await import("@/lib/two-factor-cookie");
+          const { hasValidTrustedDeviceCookie } = await import("@/lib/two-factor-trust");
+          const trustedDevice = await hasValidTrustedDeviceCookie(user.id);
           const cookieOk = await hasValidTwoFactorPassCookie(user.id);
           const tokenOk = twoFactorPass
             ? verifyTwoFactorPassToken(twoFactorPass, user.id)
             : false;
-          if (!cookieOk && !tokenOk) {
+          if (!trustedDevice && !cookieOk && !tokenOk) {
             console.error("[auth] authorize: 2FA pass missing for", email);
             return null;
           }

@@ -16,15 +16,13 @@ import {
   OTP_VALIDITY_MINUTES,
   PENDING_LOGIN_SESSION_MS,
 } from "@/lib/two-factor-config";
-
-const PENDING_LOGIN_KEY = "njd-pending-login";
-
-type PendingLogin = {
-  email: string;
-  pendingLoginToken: string;
-  exp: number;
-  devOtp?: string;
-};
+import {
+  clearPendingLoginSession,
+  computeResendCooldownSeconds,
+  readPendingLoginSession,
+  writePendingLoginSession,
+  type PendingLoginSession,
+} from "@/lib/pending-login-client";
 
 function maskEmail(value: string): string {
   const [local, domain] = value.split("@");
@@ -45,32 +43,53 @@ function TwoFactorForm() {
   const [resending, setResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [devOtp, setDevOtp] = useState<string | null>(null);
-  const [pendingLoginToken, setPendingLoginToken] = useState<string | null>(null);
+  const [hasPendingSession, setHasPendingSession] = useState(false);
+
+  const syncPendingSession = () => {
+    const pending = readPendingLoginSession();
+    if (!pending) {
+      setHasPendingSession(false);
+      setDevOtp(null);
+      return null;
+    }
+
+    setHasPendingSession(true);
+    if (pending.devOtp) {
+      setDevOtp(pending.devOtp);
+    }
+    setResendCooldown(computeResendCooldownSeconds(pending.otpSentAt));
+    return pending;
+  };
 
   useEffect(() => {
-    if (resendCooldown <= 0) return;
+    syncPendingSession();
+  }, []);
+
+  const cooldownActive = resendCooldown > 0;
+  useEffect(() => {
+    if (!cooldownActive) return;
     const timer = window.setInterval(() => {
       setResendCooldown((seconds) => (seconds <= 1 ? 0 : seconds - 1));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [resendCooldown]);
+  }, [cooldownActive]);
 
-  useEffect(() => {
-    const raw = sessionStorage.getItem(PENDING_LOGIN_KEY);
-    if (!raw) return;
-    try {
-      const pending = JSON.parse(raw) as PendingLogin;
-      if (pending.devOtp) {
-        setDevOtp(pending.devOtp);
-      }
-      if (pending.pendingLoginToken) {
-        setPendingLoginToken(pending.pendingLoginToken);
-      }
-      setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-    } catch {
-      /* ignore */
+  const refreshPendingSession = (
+    pending: PendingLoginSession,
+    updates: Partial<Pick<PendingLoginSession, "devOtp" | "otpSentAt">>
+  ) => {
+    const nextSession: PendingLoginSession = {
+      ...pending,
+      ...updates,
+      exp: Date.now() + PENDING_LOGIN_SESSION_MS,
+      otpSentAt: updates.otpSentAt ?? pending.otpSentAt,
+    };
+    writePendingLoginSession(nextSession);
+    setHasPendingSession(true);
+    if (nextSession.devOtp) {
+      setDevOtp(nextSession.devOtp);
     }
-  }, []);
+  };
 
   const handleVerify = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -81,19 +100,15 @@ function TwoFactorForm() {
       return;
     }
 
-    const raw = sessionStorage.getItem(PENDING_LOGIN_KEY);
-    if (!raw) {
+    const pending = readPendingLoginSession();
+    if (!pending || pending.email.toLowerCase() !== email || !pending.pendingLoginToken) {
       setError(t("otpSessionExpired"));
       return;
     }
 
-    const pending = JSON.parse(raw) as PendingLogin;
-    if (
-      pending.exp < Date.now() ||
-      pending.email.toLowerCase() !== email ||
-      !pending.pendingLoginToken
-    ) {
-      sessionStorage.removeItem(PENDING_LOGIN_KEY);
+    if (pending.exp < Date.now()) {
+      clearPendingLoginSession();
+      setHasPendingSession(false);
       setError(t("otpSessionExpired"));
       return;
     }
@@ -119,7 +134,8 @@ function TwoFactorForm() {
         result.passToken
       );
 
-      sessionStorage.removeItem(PENDING_LOGIN_KEY);
+      clearPendingLoginSession();
+      setHasPendingSession(false);
 
       if (!finalResult.success) {
         setError(t("signInFailed"));
@@ -142,40 +158,43 @@ function TwoFactorForm() {
   const handleResend = async () => {
     setError(null);
 
-    if (!email || !pendingLoginToken || resendCooldown > 0) {
-      return;
-    }
-
-    const raw = sessionStorage.getItem(PENDING_LOGIN_KEY);
-    if (!raw) {
+    if (!email) {
       setError(t("otpSessionExpired"));
       return;
     }
 
-    const pending = JSON.parse(raw) as PendingLogin;
-    if (
-      pending.exp < Date.now() ||
-      pending.email.toLowerCase() !== email ||
-      pending.pendingLoginToken !== pendingLoginToken
-    ) {
-      sessionStorage.removeItem(PENDING_LOGIN_KEY);
+    if (resendCooldown > 0) {
+      return;
+    }
+
+    const pending = readPendingLoginSession();
+    if (!pending?.pendingLoginToken || pending.email.toLowerCase() !== email) {
       setError(t("otpSessionExpired"));
+      setHasPendingSession(false);
       return;
     }
 
     setResending(true);
     try {
-      const result = await resendOTP(email, pendingLoginToken);
+      const result = await resendOTP(email, pending.pendingLoginToken);
       if (!result.success) {
         if (result.retryAfterSeconds) {
           setResendCooldown(result.retryAfterSeconds);
         }
         if (result.error === "Login session expired. Please sign in again.") {
+          clearPendingLoginSession();
+          setHasPendingSession(false);
           setError(t("otpSessionExpired"));
         } else if (result.error === "Too many attempts. Try again later.") {
           setError(t("otpTooManyAttempts"));
         } else if (result.error === "Please wait before requesting a new code.") {
-          setError(t("resendOtpWait", { seconds: result.retryAfterSeconds ?? OTP_RESEND_COOLDOWN_SECONDS }));
+          setError(
+            t("resendOtpWait", {
+              seconds: result.retryAfterSeconds ?? OTP_RESEND_COOLDOWN_SECONDS,
+            })
+          );
+        } else if (result.error?.includes("Could not deliver verification email")) {
+          setError(t("resendOtpEmailFailed"));
         } else {
           setError(result.error ?? t("resendOtpFailed"));
         }
@@ -183,23 +202,12 @@ function TwoFactorForm() {
       }
 
       setCode("");
-      setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-      if (result.devOtp) {
-        setDevOtp(result.devOtp);
-        sessionStorage.setItem(
-          PENDING_LOGIN_KEY,
-          JSON.stringify({
-            ...pending,
-            devOtp: result.devOtp,
-            exp: Date.now() + PENDING_LOGIN_SESSION_MS,
-          })
-        );
-      } else {
-        sessionStorage.setItem(
-          PENDING_LOGIN_KEY,
-          JSON.stringify({ ...pending, exp: Date.now() + PENDING_LOGIN_SESSION_MS })
-        );
-      }
+      const otpSentAt = result.otpSentAt ?? Date.now();
+      setResendCooldown(computeResendCooldownSeconds(otpSentAt) || OTP_RESEND_COOLDOWN_SECONDS);
+      refreshPendingSession(pending, {
+        otpSentAt,
+        ...(result.devOtp ? { devOtp: result.devOtp } : {}),
+      });
       toast.success(t("resendOtpSuccess"));
     } catch {
       setError(t("resendOtpFailed"));
@@ -268,7 +276,7 @@ function TwoFactorForm() {
             <Button
               type="submit"
               className="h-10 w-full"
-              disabled={loading || code.length !== 6 || !pendingLoginToken}
+              disabled={loading || code.length !== 6 || !hasPendingSession}
             >
               {loading ? tCommon("loading") : t("verifyOtpButton")}
             </Button>
@@ -276,7 +284,7 @@ function TwoFactorForm() {
               type="button"
               variant="outline"
               className="h-10 w-full"
-              disabled={resending || resendCooldown > 0 || !pendingLoginToken || loading}
+              disabled={resending || resendCooldown > 0 || !hasPendingSession || loading}
               onClick={handleResend}
             >
               {resending

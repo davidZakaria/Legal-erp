@@ -76,6 +76,7 @@
     "resendOtpSending": "Sending new code...",
     "resendOtpSuccess": "A new verification code was sent to your email.",
     "resendOtpFailed": "Could not send a new code. Try again.",
+    "resendOtpEmailFailed": "Could not deliver the email. Check your spam folder, then try again or contact your administrator.",
     "resendOtpWait": "You can resend in {seconds}s",
     "devOtpLabel": "Development",
     "devOtpHint": "Use this code for local testing",

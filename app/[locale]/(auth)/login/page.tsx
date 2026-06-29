@@ -12,8 +12,8 @@ import { useRouter } from "@/i18n/navigation";
 import { initiateLogin, finalizeLogin } from "@/app/actions/auth/login";
 import { getTurnstileSiteKey } from "@/lib/turnstile-config";
 import { PENDING_LOGIN_SESSION_MS } from "@/lib/two-factor-config";
+import { writePendingLoginSession } from "@/lib/pending-login-client";
 
-const PENDING_LOGIN_KEY = "njd-pending-login";
 const turnstileSiteKey = getTurnstileSiteKey();
 
 export default function LoginPage() {
@@ -76,15 +76,13 @@ export default function LoginPage() {
       }
 
       if (initResult.requires2FA) {
-        sessionStorage.setItem(
-          PENDING_LOGIN_KEY,
-          JSON.stringify({
-            email: initResult.email,
-            pendingLoginToken: initResult.pendingLoginToken,
-            exp: Date.now() + PENDING_LOGIN_SESSION_MS,
-            devOtp: initResult.devOtp,
-          })
-        );
+        writePendingLoginSession({
+          email: initResult.email,
+          pendingLoginToken: initResult.pendingLoginToken,
+          exp: Date.now() + PENDING_LOGIN_SESSION_MS,
+          otpSentAt: Date.now(),
+          devOtp: initResult.devOtp,
+        });
         router.push(`/2fa?email=${encodeURIComponent(initResult.email)}`);
         return;
       }
