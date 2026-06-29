@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRouter } from "@/i18n/navigation";
 import { updateInitialPassword } from "@/app/actions/auth/updateInitialPassword";
+import { SecondaryEmailDialog } from "@/components/auth/SecondaryEmailDialog";
 
 const schema = z
   .object({
@@ -26,10 +26,16 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-export function SetupPasswordForm() {
-  const router = useRouter();
+export function SetupPasswordForm({
+  primaryEmail,
+  hasSecondaryEmail,
+}: {
+  primaryEmail: string;
+  hasSecondaryEmail: boolean;
+}) {
   const { update } = useSession();
   const [submitting, setSubmitting] = useState(false);
+  const [showSecondaryEmail, setShowSecondaryEmail] = useState(false);
 
   const {
     register,
@@ -39,6 +45,10 @@ export function SetupPasswordForm() {
     resolver: zodResolver(schema),
     defaultValues: { newPassword: "", confirmPassword: "" },
   });
+
+  const finishOnboarding = () => {
+    window.location.assign("/");
+  };
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -55,68 +65,78 @@ export function SetupPasswordForm() {
         /* session refresh best-effort */
       }
 
-      toast.success("تم تأمين حسابك بنجاح. مرحباً بك في النظام.");
-      window.location.assign("/");
+      toast.success("تم تأمين حسابك بنجاح.");
+
+      if (hasSecondaryEmail) {
+        finishOnboarding();
+        return;
+      }
+
+      setShowSecondaryEmail(true);
     } finally {
       setSubmitting(false);
     }
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4" dir="rtl">
-      <Card className="w-full max-w-md border-border shadow-lg">
-        <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <LockKeyhole className="h-7 w-7" />
-          </div>
-          <div>
-            <CardTitle className="text-xl text-foreground">
-              🔒 تأمين الحساب (إعداد كلمة المرور الخاصة)
-            </CardTitle>
-            <CardDescription className="mt-3 text-start leading-relaxed text-muted-foreground">
-              مرحباً بك في النظام. لأسباب أمنية وبناءً على سياسة أمن المعلومات، يجب عليك تغيير
-              كلمة المرور المؤقتة قبل الدخول للنظام.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                autoComplete="new-password"
-                className="h-10"
-                {...register("newPassword")}
-              />
-              {errors.newPassword && (
-                <p className="text-sm text-destructive">{errors.newPassword.message}</p>
-              )}
+    <>
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4" dir="rtl">
+        <Card className="w-full max-w-md border-border shadow-lg">
+          <CardHeader className="space-y-4 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <LockKeyhole className="h-7 w-7" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                className="h-10"
-                {...register("confirmPassword")}
-              />
-              {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
-              )}
+            <div>
+              <CardTitle className="text-xl text-foreground">
+                🔒 تأمين الحساب (إعداد كلمة المرور الخاصة)
+              </CardTitle>
+              <CardDescription className="mt-3 text-start leading-relaxed text-muted-foreground">
+                مرحباً بك في النظام. لأسباب أمنية وبناءً على سياسة أمن المعلومات، يجب عليك
+                تغيير كلمة المرور المؤقتة قبل الدخول للنظام.
+              </CardDescription>
             </div>
-            <Button
-              type="submit"
-              className="h-10 w-full"
-              disabled={submitting}
-            >
-              {submitting ? "جاري الحفظ..." : "حفظ كلمة المرور والدخول"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  className="h-10"
+                  {...register("newPassword")}
+                />
+                {errors.newPassword && (
+                  <p className="text-sm text-destructive">{errors.newPassword.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  className="h-10"
+                  {...register("confirmPassword")}
+                />
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+              <Button type="submit" className="h-10 w-full" disabled={submitting}>
+                {submitting ? "جاري الحفظ..." : "حفظ كلمة المرور والمتابعة"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <SecondaryEmailDialog
+        open={showSecondaryEmail}
+        primaryEmail={primaryEmail}
+        onComplete={finishOnboarding}
+      />
+    </>
   );
 }

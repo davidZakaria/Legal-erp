@@ -416,14 +416,15 @@ model ExpertOfficeLookup {
 }
 
 model BackupLog {
-  id          String     @id @default(cuid())
-  fileName    String     @map("file_name")
-  type        BackupType
-  size        String?
-  files       Int        @default(1) @map("files_count")
-  isEncrypted Boolean    @default(false) @map("is_encrypted")
-  filePath    String?    @map("file_path")
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id              String     @id @default(cuid())
+  fileName        String     @map("file_name")
+  type            BackupType
+  size            String?
+  files           Int        @default(1) @map("files_count")
+  isEncrypted     Boolean    @default(false) @map("is_encrypted")
+  filePath        String?    @map("file_path")
+  manifestPreview Json?      @map("manifest_preview")
+  createdAt       DateTime   @default(now()) @map("created_at")
 
   @@map("backup_logs")
 }

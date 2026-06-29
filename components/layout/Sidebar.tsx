@@ -75,7 +75,7 @@ const navItems: {
     roles: "all",
     readPermission: "FINANCIALS_READ",
   },
-  { href: "/library", labelKey: "library", icon: BookOpen, roles: "all" },
+  { href: "/library", labelKey: "library", icon: BookOpen, roles: "all", readPermission: "LIBRARY_READ" },
   { href: "/performance", labelKey: "performance", icon: BarChart3, roles: "admin" },
   { href: "/audit-logs", labelKey: "auditLogs", icon: ClipboardList, roles: "admin" },
   { href: "/admin/users", labelKey: "adminUsers", icon: Users, roles: "admin" },

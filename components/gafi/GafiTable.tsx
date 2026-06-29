@@ -30,6 +30,8 @@ import {
 import { LegalBadge } from "@/lib/legal-labels";
 import { cn } from "@/lib/utils";
 import { updateGafiTaskStatus } from "@/app/actions/updateGafiTaskStatus";
+import { deleteGafiTask } from "@/app/actions/gafiCrud";
+import { RecordActions } from "@/components/crud/RecordActions";
 import { useRouter } from "@/i18n/navigation";
 
 export type GafiTaskRow = {
@@ -48,10 +50,12 @@ function isDeadlineUrgent(deadline: Date, status: string): boolean {
 
 export function GafiTable({
   tasks,
-  canManage,
+  canUpdate,
+  canDelete,
 }: {
   tasks: GafiTaskRow[];
-  canManage: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
 }) {
   const t = useTranslations("gafi");
   const tCommon = useTranslations("common");
@@ -126,7 +130,7 @@ export function GafiTable({
                 <TableHead>{t("taskTitle")}</TableHead>
                 <TableHead>{t("deadline")}</TableHead>
                 <TableHead>{tCommon("status")}</TableHead>
-                {canManage && <TableHead className="text-center">{tCommon("actions")}</TableHead>}
+                {canUpdate && <TableHead className="text-center">{tCommon("actions")}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,47 +173,59 @@ export function GafiTable({
                           locale={locale}
                         />
                       </TableCell>
-                      {canManage && (
+                      {canUpdate && (
                         <TableCell className="text-center">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isUpdating}
-                                className="h-8 w-8"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {task.status !== "IN_PROGRESS" && task.status !== "COMPLETED" && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusUpdate(task.id, "IN_PROGRESS")}
+                          <div className="flex items-center justify-center gap-1">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={isUpdating}
+                                  className="h-8 w-8"
                                 >
-                                  {t("markInProgress")}
-                                </DropdownMenuItem>
-                              )}
-                              {task.status !== "COMPLETED" && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusUpdate(task.id, "COMPLETED")}
-                                >
-                                  {t("markCompleted")}
-                                </DropdownMenuItem>
-                              )}
-                              {task.taskType === "ASSEMBLY" && (
-                                <>
-                                  <DropdownMenuSeparator />
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {task.status !== "IN_PROGRESS" && task.status !== "COMPLETED" && (
                                   <DropdownMenuItem
-                                    onClick={() => handleGenerateMinutes(task.id)}
+                                    onClick={() => handleStatusUpdate(task.id, "IN_PROGRESS")}
                                   >
-                                    <FileText className="me-2 h-4 w-4" />
-                                    {t("generateAssemblyMinutes")}
+                                    {t("markInProgress")}
                                   </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                )}
+                                {task.status !== "COMPLETED" && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusUpdate(task.id, "COMPLETED")}
+                                  >
+                                    {t("markCompleted")}
+                                  </DropdownMenuItem>
+                                )}
+                                {task.taskType === "ASSEMBLY" && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleGenerateMinutes(task.id)}
+                                    >
+                                      <FileText className="me-2 h-4 w-4" />
+                                      {t("generateAssemblyMinutes")}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            {canDelete && (
+                              <RecordActions
+                                showEdit={false}
+                                showDelete
+                                onDelete={() => deleteGafiTask(task.id)}
+                                deleteItemName={task.title}
+                                deleteTitle={t("deleteTaskTitle")}
+                                deleteDescription={t("deleteTaskDescription")}
+                              />
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -218,7 +234,7 @@ export function GafiTable({
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={canManage ? 5 : 4}
+                    colSpan={canUpdate ? 5 : 4}
                     className="py-8 text-center text-muted-foreground"
                   >
                     {tCommon("noData")}

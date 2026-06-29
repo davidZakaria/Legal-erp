@@ -8,6 +8,15 @@ import yauzl from "yauzl";
 import { BackupType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { exportDatabaseJson, stringifyBackup } from "@/lib/backup";
+import {
+  BACKUP_MANIFEST_FILE,
+  collectSystemFiles,
+  resolveArchivePathToProjectPath,
+  summarizeManifestFiles,
+  toManifestPreview,
+  type BackupManifest,
+  type BackupManifestPreview,
+} from "@/lib/backup-manifest";
 
 export const BACKUP_DIR = path.join(process.cwd(), "private", "backups");
 
@@ -21,6 +30,7 @@ export type AdvancedBackupResult = {
   size: string;
   files: number;
   isEncrypted: boolean;
+  preview: BackupManifestPreview;
 };
 
 function getEncryptionKey(): Buffer {
@@ -57,20 +67,26 @@ export function formatBackupSize(bytes: number): string {
   return `${mb.toFixed(2)} MB`;
 }
 
-export function buildAdvancedBackupFileName(isEncrypted: boolean, date = new Date()) {
+export function buildAdvancedBackupFileName(
+  isEncrypted: boolean,
+  type: BackupType = BackupType.MANUAL,
+  date = new Date()
+) {
   const stamp = format(date, "yyyyMMdd_HHmmss");
   const suffix = isEncrypted ? "_encrypted" : "";
-  return `NJD_Backup_${stamp}${suffix}.zip`;
+  const autoTag = type === BackupType.AUTO ? "_auto" : "";
+  return `NJD_Backup_${stamp}${autoTag}${suffix}.zip`;
 }
 
 export async function ensureBackupDir() {
   await fs.mkdir(BACKUP_DIR, { recursive: true });
 }
 
-async function writeZipArchive(
-  innerFileName: string,
-  content: string,
-  zipPath: string
+async function writeFullBackupZip(
+  zipPath: string,
+  databaseInnerName: string,
+  databaseContent: string,
+  manifest: BackupManifest
 ): Promise<number> {
   await ensureBackupDir();
 
@@ -83,7 +99,15 @@ async function writeZipArchive(
     archive.on("error", reject);
 
     archive.pipe(output);
-    archive.append(content, { name: innerFileName });
+    archive.append(databaseContent, { name: databaseInnerName });
+    archive.append(JSON.stringify(manifest, null, 2), { name: BACKUP_MANIFEST_FILE });
+
+    for (const file of manifest.files) {
+      const diskPath = resolveArchivePathToProjectPath(file.archivePath);
+      if (!diskPath) continue;
+      archive.file(diskPath, { name: file.archivePath });
+    }
+
     void archive.finalize();
   });
 
@@ -91,32 +115,43 @@ async function writeZipArchive(
   return stats.size;
 }
 
-export async function generateAdvancedBackup(
-  isEncrypted: boolean
-): Promise<AdvancedBackupResult> {
+export async function generateAdvancedBackup(options?: {
+  isEncrypted?: boolean;
+  type?: BackupType;
+}): Promise<AdvancedBackupResult> {
+  const isEncrypted = options?.isEncrypted ?? false;
+  const type = options?.type ?? BackupType.MANUAL;
+
   if (isEncrypted && !process.env.BACKUP_SECRET_KEY?.trim()) {
     throw new Error("BACKUP_SECRET_KEY is required for encrypted backups");
   }
 
   const payload = await exportDatabaseJson();
   const json = stringifyBackup(payload);
+  const systemFiles = await collectSystemFiles();
+  const manifest = summarizeManifestFiles(
+    systemFiles,
+    Object.keys(payload.tables).length
+  );
+  const preview = toManifestPreview(manifest);
+
   const innerFileName = isEncrypted ? "database.enc" : "database.json";
   const archiveContent = isEncrypted ? encryptBackupPayload(json) : json;
 
-  const fileName = buildAdvancedBackupFileName(isEncrypted);
+  const fileName = buildAdvancedBackupFileName(isEncrypted, type);
   const filePath = path.join(BACKUP_DIR, fileName);
-  const zipBytes = await writeZipArchive(innerFileName, archiveContent, filePath);
+  const zipBytes = await writeFullBackupZip(filePath, innerFileName, archiveContent, manifest);
   const size = formatBackupSize(zipBytes);
-  const files = 1;
 
   const log = await prisma.backupLog.create({
     data: {
       fileName,
-      type: BackupType.MANUAL,
+      type,
       size,
-      files,
+      files: manifest.totalFiles,
       isEncrypted,
       filePath,
+      manifestPreview: preview,
     },
   });
 
@@ -125,8 +160,9 @@ export async function generateAdvancedBackup(
     fileName,
     filePath,
     size,
-    files,
+    files: manifest.totalFiles,
     isEncrypted,
+    preview,
   };
 }
 
@@ -166,7 +202,7 @@ async function listZipEntryNames(zipPath: string): Promise<string[]> {
   });
 }
 
-async function readZipEntryContent(zipPath: string, entryName: string): Promise<string> {
+async function readZipEntryBuffer(zipPath: string, entryName: string): Promise<Buffer> {
   const zipfile = await openZip(zipPath);
 
   return new Promise((resolve, reject) => {
@@ -184,7 +220,7 @@ async function readZipEntryContent(zipPath: string, entryName: string): Promise<
 
         const chunks: Buffer[] = [];
         readStream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-        readStream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+        readStream.on("end", () => resolve(Buffer.concat(chunks)));
         readStream.on("error", reject);
       });
     });
@@ -193,6 +229,11 @@ async function readZipEntryContent(zipPath: string, entryName: string): Promise<
     zipfile.on("end", () => reject(new Error(`Missing ${entryName} in archive`)));
     zipfile.readEntry();
   });
+}
+
+async function readZipEntryContent(zipPath: string, entryName: string): Promise<string> {
+  const buffer = await readZipEntryBuffer(zipPath, entryName);
+  return buffer.toString("utf8");
 }
 
 async function detectBackupZipEncryption(zipPath: string): Promise<boolean> {
@@ -220,9 +261,49 @@ export async function extractJsonFromBackupFile(
   return encrypted ? decryptBackupPayload(content) : content;
 }
 
+export async function extractManifestFromBackupFile(
+  filePath: string
+): Promise<BackupManifest | null> {
+  const safePath = resolveSafeBackupPath(filePath);
+  if (!safePath) return null;
+
+  try {
+    const entryNames = await listZipEntryNames(safePath);
+    if (!entryNames.includes(BACKUP_MANIFEST_FILE)) return null;
+    const content = await readZipEntryContent(safePath, BACKUP_MANIFEST_FILE);
+    return JSON.parse(content) as BackupManifest;
+  } catch {
+    return null;
+  }
+}
+
+export async function restoreSystemFilesFromBackupFile(filePath: string): Promise<number> {
+  const safePath = resolveSafeBackupPath(filePath);
+  if (!safePath) {
+    throw new Error("Invalid backup file path");
+  }
+
+  const entryNames = await listZipEntryNames(safePath);
+  const fileEntries = entryNames.filter((name) => name.startsWith("files/"));
+
+  let restored = 0;
+  for (const entryName of fileEntries) {
+    const targetPath = resolveArchivePathToProjectPath(entryName);
+    if (!targetPath) continue;
+
+    const buffer = await readZipEntryBuffer(safePath, entryName);
+    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    await fs.writeFile(targetPath, buffer);
+    restored += 1;
+  }
+
+  return restored;
+}
+
 export type BackupVerifyResult = {
   valid: boolean;
   tableCount?: number;
+  fileCount?: number;
   error?: string;
 };
 
@@ -236,7 +317,15 @@ export async function verifyBackupFile(
     if (!payload?.tables || typeof payload.tables !== "object") {
       return { valid: false, error: "Invalid backup structure" };
     }
-    return { valid: true, tableCount: Object.keys(payload.tables).length };
+
+    const manifest = await extractManifestFromBackupFile(filePath);
+    const fileCount = manifest?.totalFiles ?? 1;
+
+    return {
+      valid: true,
+      tableCount: Object.keys(payload.tables).length,
+      fileCount,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Verification failed";
     return { valid: false, error: message };
@@ -274,4 +363,14 @@ export async function cleanupExpiredBackups() {
   }
 
   return idsToDelete.size;
+}
+
+export async function runDailyAutoBackup(): Promise<AdvancedBackupResult> {
+  const useEncryption = Boolean(process.env.BACKUP_SECRET_KEY?.trim());
+  const result = await generateAdvancedBackup({
+    isEncrypted: useEncryption,
+    type: BackupType.AUTO,
+  });
+  await cleanupExpiredBackups();
+  return result;
 }

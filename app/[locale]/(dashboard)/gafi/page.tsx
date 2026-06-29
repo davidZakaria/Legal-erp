@@ -58,8 +58,8 @@ export default async function GafiPage() {
 
   const user = session!.user;
   const canCreate = await hasPermission(user.id, "GAFI_CREATE", user.role);
-  const canEdit = await hasPermission(user.id, "GAFI_UPDATE", user.role);
-  const canManage = canCreate || canEdit;
+  const canUpdate = await hasPermission(user.id, "GAFI_UPDATE", user.role);
+  const canDelete = await hasPermission(user.id, "GAFI_DELETE", user.role);
 
   return (
     <div>
@@ -68,7 +68,9 @@ export default async function GafiPage() {
         companies={companyRows}
         archives={archiveRows}
         tasks={taskRows}
-        canManage={canManage}
+        canCreate={canCreate}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
     </div>
   );

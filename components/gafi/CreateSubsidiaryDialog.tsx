@@ -91,12 +91,14 @@ function OptionalDateField({
 
 export function CreateSubsidiaryDialog({
   canCreate,
+  canUpdate = false,
   initialData = null,
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
 }: {
   canCreate: boolean;
+  canUpdate?: boolean;
   initialData?: SubsidiaryFormInitialData | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -169,7 +171,8 @@ export function CreateSubsidiaryDialog({
     toast.error(result.error ?? t("createCompanyError"));
   };
 
-  if (!canCreate && !isEditMode) return null;
+  if (!isEditMode && !canCreate) return null;
+  if (isEditMode && !canUpdate) return null;
 
   const dialog = (
     <Dialog open={open} onOpenChange={setOpen}>

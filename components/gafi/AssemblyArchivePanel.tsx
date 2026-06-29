@@ -15,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LegalBadge } from "@/lib/legal-labels";
 import { CreateAssemblyArchiveDialog } from "./CreateAssemblyArchiveDialog";
+import { RecordActions } from "@/components/crud/RecordActions";
+import { deleteAssemblyArchive } from "@/app/actions/gafiCrud";
 import type { SubsidiaryCompanyRow } from "./SubsidiaryRegistryTable";
 
 export type AssemblyArchiveRow = {
@@ -29,11 +31,17 @@ export type AssemblyArchiveRow = {
 export function AssemblyArchivePanel({
   archives,
   companies,
-  canManage,
+  canCreate,
+  canUpdate,
+  canDelete,
+  onEdit,
 }: {
   archives: AssemblyArchiveRow[];
   companies: SubsidiaryCompanyRow[];
-  canManage: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onEdit?: (archive: AssemblyArchiveRow) => void;
 }) {
   const t = useTranslations("gafi");
   const tCommon = useTranslations("common");
@@ -41,9 +49,13 @@ export function AssemblyArchivePanel({
 
   return (
     <div className="space-y-4">
-      {canManage && (
+      {canCreate && (
         <div className="flex justify-end">
-          <CreateAssemblyArchiveDialog canCreate={canManage} companies={companies} />
+          <CreateAssemblyArchiveDialog
+            canCreate={canCreate}
+            canUpdate={canUpdate}
+            companies={companies}
+          />
         </div>
       )}
 
@@ -62,6 +74,9 @@ export function AssemblyArchivePanel({
                 <TableHead>{t("assemblyType")}</TableHead>
                 <TableHead>{t("assemblyDateHeld")}</TableHead>
                 <TableHead className="text-center">{t("assemblyFile")}</TableHead>
+                {(canUpdate || canDelete) && (
+                  <TableHead className="text-center">{tCommon("actions")}</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -91,11 +106,30 @@ export function AssemblyArchivePanel({
                         <span className="text-slate-400">—</span>
                       )}
                     </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell>
+                        <RecordActions
+                          showEdit={canUpdate}
+                          showDelete={canDelete}
+                          onEdit={
+                            canUpdate && onEdit ? () => onEdit(archive) : undefined
+                          }
+                          onDelete={
+                            canDelete
+                              ? () => deleteAssemblyArchive(archive.id)
+                              : undefined
+                          }
+                          deleteItemName={`${archive.companyName} — ${archive.type}`}
+                          deleteTitle={t("deleteAssemblyTitle")}
+                          deleteDescription={t("deleteAssemblyDescription")}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={canUpdate || canDelete ? 5 : 4} className="py-8 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>

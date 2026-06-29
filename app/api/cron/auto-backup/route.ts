@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BackupType } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
-import {
-  buildBackupFileName,
-  exportDatabaseJson,
-  stringifyBackup,
-} from "@/lib/backup";
+import fs from "fs/promises";
+import { runDailyAutoBackup } from "@/lib/backup-engine";
 import { getSuperAdminEmails, sendBackupEmail } from "@/lib/email";
 
 async function isAuthorized(request: NextRequest): Promise<boolean> {
@@ -19,33 +14,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await exportDatabaseJson();
-  const fileName = buildBackupFileName();
-  const jsonContent = stringifyBackup(payload);
+  try {
+    const result = await runDailyAutoBackup();
+    const zipBuffer = await fs.readFile(result.filePath);
 
-  const recipients = await getSuperAdminEmails();
-  if (!recipients.length) {
-    return NextResponse.json({ error: "No super admin emails configured" }, { status: 500 });
+    const recipients = await getSuperAdminEmails();
+    let emailSent = false;
+    let emailMessage = "No super admin emails configured";
+
+    if (recipients.length) {
+      const [primary, ...bccRest] = recipients;
+      const emailResult = await sendBackupEmail({
+        to: primary,
+        bcc: bccRest.length ? bccRest : undefined,
+        fileName: result.fileName,
+        zipContent: zipBuffer,
+        preview: result.preview,
+      });
+      emailSent = emailResult.success;
+      emailMessage = emailResult.message ?? "Email sent";
+    }
+
+    return NextResponse.json({
+      success: true,
+      fileName: result.fileName,
+      logId: result.logId,
+      size: result.size,
+      files: result.files,
+      preview: result.preview,
+      emailSent,
+      message: emailMessage,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Auto backup failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const [primary, ...bccRest] = recipients;
-  const emailResult = await sendBackupEmail({
-    to: primary,
-    bcc: bccRest.length ? bccRest : undefined,
-    fileName,
-    jsonContent,
-  });
-
-  await prisma.backupLog.create({
-    data: {
-      fileName,
-      type: BackupType.AUTO,
-    },
-  });
-
-  return NextResponse.json({
-    success: emailResult.success,
-    fileName,
-    message: emailResult.message,
-  });
 }

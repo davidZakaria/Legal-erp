@@ -5,6 +5,7 @@ export const PERMISSION_MODULES = [
   "GAFI",
   "CONTRACTS",
   "FINANCIALS",
+  "LIBRARY",
 ] as const;
 
 export const PERMISSION_ACTIONS = ["READ", "CREATE", "UPDATE", "DELETE"] as const;
@@ -37,6 +38,7 @@ export const DEFAULT_LAWYER_PERMISSIONS: Permission[] = [
   "CONTRACTS_CREATE",
   "FINANCIALS_READ",
   "FINANCIALS_CREATE",
+  "LIBRARY_READ",
 ];
 
 export const PERMISSION_MODULE_LABELS: Record<
@@ -49,6 +51,7 @@ export const PERMISSION_MODULE_LABELS: Record<
   GAFI: { en: "GAFI", ar: "هيئة الاستثمار" },
   CONTRACTS: { en: "Contracts", ar: "العقود" },
   FINANCIALS: { en: "Financials", ar: "الماليات" },
+  LIBRARY: { en: "Legal Library", ar: "المكتبة القانونية" },
 };
 
 export const PERMISSION_ACTION_LABELS: Record<

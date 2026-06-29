@@ -14,6 +14,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CreateSubsidiaryDialog } from "./CreateSubsidiaryDialog";
+import { RecordActions } from "@/components/crud/RecordActions";
+import { deleteSubsidiaryCompany } from "@/app/actions/gafiCrud";
 
 export type SubsidiaryCompanyRow = {
   id: string;
@@ -55,10 +57,16 @@ function ExpiryCell({ dateIso }: { dateIso: string | null }) {
 
 export function SubsidiaryRegistryTable({
   companies,
-  canManage,
+  canCreate,
+  canUpdate,
+  canDelete,
+  onEdit,
 }: {
   companies: SubsidiaryCompanyRow[];
-  canManage: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  onEdit?: (company: SubsidiaryCompanyRow) => void;
 }) {
   const t = useTranslations("gafi");
   const tCommon = useTranslations("common");
@@ -81,7 +89,7 @@ export function SubsidiaryRegistryTable({
             <span>{t("registryRadarAlert", { count: urgentCount })}</span>
           </div>
         )}
-        {canManage && <CreateSubsidiaryDialog canCreate={canManage} />}
+        {canCreate && <CreateSubsidiaryDialog canCreate={canCreate} canUpdate={canUpdate} />}
       </div>
 
       <Card className="overflow-hidden border-border shadow-sm">
@@ -102,6 +110,9 @@ export function SubsidiaryRegistryTable({
                 <TableHead>{t("taxCardExpiryDate")}</TableHead>
                 <TableHead>{t("boardExpiryDate")}</TableHead>
                 <TableHead>{t("capitalPaidDetails")}</TableHead>
+                {(canUpdate || canDelete) && (
+                  <TableHead className="text-center">{tCommon("actions")}</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,11 +134,30 @@ export function SubsidiaryRegistryTable({
                     <TableCell className="text-muted-foreground">
                       {company.capitalPaidDetails ?? "—"}
                     </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell>
+                        <RecordActions
+                          showEdit={canUpdate}
+                          showDelete={canDelete}
+                          onEdit={
+                            canUpdate && onEdit ? () => onEdit(company) : undefined
+                          }
+                          onDelete={
+                            canDelete
+                              ? () => deleteSubsidiaryCompany(company.id)
+                              : undefined
+                          }
+                          deleteItemName={company.name}
+                          deleteTitle={t("deleteCompanyTitle")}
+                          deleteDescription={t("deleteCompanyDescription")}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={canUpdate || canDelete ? 8 : 7} className="py-8 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>

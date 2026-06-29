@@ -3,32 +3,26 @@
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
-import { requireAuthenticatedSession } from "@/lib/auth-guards";
+import { requirePermission } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/auditLogger";
-import { canUploadLibraryDocuments } from "@/lib/rbac";
 import { LegalDocumentCategory } from "@prisma/client";
+import { libraryDocumentPublicUrl } from "@/lib/library-uploads";
 import {
   getLibraryUploadDir,
   joinStoredUploadFile,
 } from "@/lib/upload-paths";
-import { libraryDocumentPublicUrl } from "@/lib/library-uploads";
+import { revalidateModulePaths } from "@/lib/server-action-utils";
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const VALID_CATEGORIES = Object.values(LegalDocumentCategory);
 
 export async function uploadLegalDocument(formData: FormData) {
-  const gate = await requireAuthenticatedSession();
+  const gate = await requirePermission("LIBRARY_CREATE");
   if (!gate.success) {
     return { success: false, error: gate.error };
   }
   const session = gate.session;
-
-  if (!canUploadLibraryDocuments(session.user.role)) {
-    return { success: false, error: "Forbidden" };
-  }
 
   const title = (formData.get("title") as string)?.trim();
   const category = formData.get("category") as LegalDocumentCategory;
@@ -69,8 +63,7 @@ export async function uploadLegalDocument(formData: FormData) {
   });
 
   await logActivity(session.user.id, "UPLOAD", "LegalDocument", document.id);
-  revalidatePath("/ar/library");
-  revalidatePath("/en/library");
+  revalidateModulePaths("/library");
 
   return { success: true, documentId: document.id };
 }

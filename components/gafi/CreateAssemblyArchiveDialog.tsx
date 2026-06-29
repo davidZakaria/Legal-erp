@@ -54,6 +54,7 @@ export type AssemblyArchiveFormInitialData = {
 
 export function CreateAssemblyArchiveDialog({
   canCreate,
+  canUpdate = false,
   companies,
   initialData = null,
   open: controlledOpen,
@@ -61,6 +62,7 @@ export function CreateAssemblyArchiveDialog({
   hideTrigger = false,
 }: {
   canCreate: boolean;
+  canUpdate?: boolean;
   companies: SubsidiaryCompanyRow[];
   initialData?: AssemblyArchiveFormInitialData | null;
   open?: boolean;
@@ -127,7 +129,8 @@ export function CreateAssemblyArchiveDialog({
     toast.error(result.error ?? t("createAssemblyError"));
   };
 
-  if (!canCreate && !isEditMode) return null;
+  if (!isEditMode && !canCreate) return null;
+  if (isEditMode && !canUpdate) return null;
 
   const dialog = (
     <Dialog open={open} onOpenChange={setOpen}>

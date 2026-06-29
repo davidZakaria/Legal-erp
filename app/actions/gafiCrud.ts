@@ -153,3 +153,17 @@ export async function deleteAssemblyArchive(id: string): Promise<ActionResult> {
     return { success: false, error: "Delete failed" };
   }
 }
+
+export async function deleteGafiTask(id: string): Promise<ActionResult> {
+  const gate = await requirePermission("GAFI_DELETE");
+  if (!gate.success) return { success: false, error: gate.error };
+  const session = gate.session;
+
+  const existing = await prisma.gAFITask.findUnique({ where: { id } });
+  if (!existing) return { success: false, error: "Task not found" };
+
+  await prisma.gAFITask.delete({ where: { id } });
+  await logActivity(session.user.id, "DELETE", "GAFITask", id);
+  revalidateModulePaths("/gafi");
+  return { success: true };
+}

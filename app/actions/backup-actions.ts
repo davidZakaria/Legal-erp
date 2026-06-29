@@ -17,7 +17,9 @@ import {
   deleteBackupFile,
   extractJsonFromBackupFile,
   verifyBackupFile,
+  restoreSystemFilesFromBackupFile,
 } from "@/lib/backup-engine";
+import type { BackupManifestPreview } from "@/lib/backup-manifest";
 
 async function assertSuperAdmin() {
   const gate = await requireAuthenticatedSession();
@@ -41,6 +43,7 @@ export type BackupLogRow = {
   files: number;
   isEncrypted: boolean;
   filePath: string | null;
+  manifestPreview: BackupManifestPreview | null;
   createdAt: string;
 };
 
@@ -64,6 +67,7 @@ export async function getBackupPageData() {
       files: log.files,
       isEncrypted: log.isEncrypted,
       filePath: log.filePath,
+      manifestPreview: (log.manifestPreview as BackupManifestPreview | null) ?? null,
       createdAt: log.createdAt.toISOString(),
     })),
     stats: {
@@ -136,7 +140,7 @@ export async function verifyBackup(logId: string) {
     return { success: false as const, error: result.error ?? "Verification failed" };
   }
 
-  return { success: true as const, tableCount: result.tableCount ?? 0 };
+  return { success: true as const, tableCount: result.tableCount ?? 0, fileCount: result.fileCount ?? 0 };
 }
 
 export async function restoreBackupFromLog(logId: string, confirmation: string) {
@@ -156,6 +160,11 @@ export async function restoreBackupFromLog(logId: string, confirmation: string) 
     if (!result.success) {
       return { success: false as const, error: result.error ?? "Restore failed" };
     }
+
+    if (log.filePath) {
+      await restoreSystemFilesFromBackupFile(log.filePath);
+    }
+
     revalidateBackupPages();
     return { success: true as const };
   } catch (error) {
@@ -200,6 +209,8 @@ export async function importBackupZip(formData: FormData, confirmation: string) 
     if (!result.success) {
       return { success: false as const, error: result.error ?? "Import restore failed" };
     }
+
+    await restoreSystemFilesFromBackupFile(tempPath);
 
     await logActivity(session.user.id, "IMPORT_BACKUP", "BackupLog", session.user.id);
     revalidateBackupPages();

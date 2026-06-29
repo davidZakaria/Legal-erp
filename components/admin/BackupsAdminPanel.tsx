@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteConfirmDialog } from "@/components/crud/DeleteConfirmDialog";
+import { BackupPreviewDialog } from "@/components/admin/BackupPreviewDialog";
 import type { BackupLogRow } from "@/app/actions/backup-actions";
 import {
   cleanupBackups,
@@ -61,6 +62,7 @@ export function BackupsAdminPanel({
   const [isCleaning, setIsCleaning] = useState(false);
   const [busyLogId, setBusyLogId] = useState<string | null>(null);
   const [pendingRestore, setPendingRestore] = useState<PendingRestore | null>(null);
+  const [previewLog, setPreviewLog] = useState<BackupLogRow | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
 
   const handleRefresh = () => {
@@ -132,7 +134,12 @@ export function BackupsAdminPanel({
     setBusyLogId(null);
 
     if (result.success) {
-      toast.success(t("backupVerifySuccess", { count: result.tableCount }));
+      toast.success(
+        t("backupVerifySuccess", {
+          count: result.tableCount,
+          files: result.fileCount ?? 0,
+        })
+      );
       return;
     }
 
@@ -291,6 +298,7 @@ export function BackupsAdminPanel({
                 <TableHead>{t("backupColCreatedAt")}</TableHead>
                 <TableHead>{t("backupColSize")}</TableHead>
                 <TableHead>{t("backupColFiles")}</TableHead>
+                <TableHead>{t("backupColPreview")}</TableHead>
                 <TableHead>{t("backupColStatus")}</TableHead>
                 <TableHead className="text-end">{t("actions")}</TableHead>
               </TableRow>
@@ -298,7 +306,7 @@ export function BackupsAdminPanel({
             <TableBody>
               {logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                     {tCommon("noData")}
                   </TableCell>
                 </TableRow>
@@ -312,9 +320,27 @@ export function BackupsAdminPanel({
                     <TableCell>{log.size ?? "—"}</TableCell>
                     <TableCell>{log.files}</TableCell>
                     <TableCell>
+                      <button
+                        type="button"
+                        className={`${rowBtn} bg-slate-600 hover:bg-slate-700`}
+                        disabled={!log.manifestPreview}
+                        onClick={() => setPreviewLog(log)}
+                      >
+                        {t("backupPreview")}
+                      </button>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1.5">
+                        {log.type === "AUTO" && (
+                          <Badge className="border-0 bg-blue-600 hover:bg-blue-600">
+                            ⏰ {t("backupStatusAuto")}
+                          </Badge>
+                        )}
                         <Badge className="border-0 bg-green-500 hover:bg-green-500">
                           ✅ {t("backupStatusDb")}
+                        </Badge>
+                        <Badge className="border-0 bg-amber-500 hover:bg-amber-500">
+                          📁 {t("backupStatusFiles")}
                         </Badge>
                         {log.isEncrypted && (
                           <Badge className="border-0 bg-purple-600 hover:bg-purple-600">
@@ -372,6 +398,15 @@ export function BackupsAdminPanel({
           </Table>
         </CardContent>
       </Card>
+
+      <BackupPreviewDialog
+        open={!!previewLog}
+        onOpenChange={(open) => {
+          if (!open) setPreviewLog(null);
+        }}
+        fileName={previewLog?.fileName ?? ""}
+        preview={previewLog?.manifestPreview ?? null}
+      />
 
       <DeleteConfirmDialog
         open={!!pendingRestore}

@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LegalDocumentCategory } from "@prisma/client";
+import { RecordActions } from "@/components/crud/RecordActions";
+import { deleteLegalDocument } from "@/app/actions/libraryCrud";
 
 export type LibraryDocument = {
   id: string;
@@ -24,7 +26,17 @@ const TAB_CATEGORIES: LegalDocumentCategory[] = [
   LegalDocumentCategory.LAWS,
 ];
 
-function DocumentGrid({ documents }: { documents: LibraryDocument[] }) {
+function DocumentGrid({
+  documents,
+  canUpdate,
+  canDelete,
+  onEdit,
+}: {
+  documents: LibraryDocument[];
+  canUpdate: boolean;
+  canDelete: boolean;
+  onEdit?: (doc: LibraryDocument) => void;
+}) {
   const t = useTranslations("library");
   const tCommon = useTranslations("common");
 
@@ -52,6 +64,21 @@ function DocumentGrid({ documents }: { documents: LibraryDocument[] }) {
                 {format(new Date(doc.uploadedAt), "yyyy-MM-dd")} · {doc.uploadedByName}
               </p>
             </div>
+            {(canUpdate || canDelete) && (
+              <RecordActions
+                showEdit={canUpdate}
+                showDelete={canDelete}
+                onEdit={canUpdate && onEdit ? () => onEdit(doc) : undefined}
+                onDelete={
+                  canDelete
+                    ? () => deleteLegalDocument(doc.id)
+                    : undefined
+                }
+                deleteItemName={doc.title}
+                deleteTitle={t("deleteTitle")}
+                deleteDescription={t("deleteDescription")}
+              />
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <Button variant="outline" size="sm" className="w-full gap-2" asChild>
@@ -67,7 +94,17 @@ function DocumentGrid({ documents }: { documents: LibraryDocument[] }) {
   );
 }
 
-export function LibraryView({ documents }: { documents: LibraryDocument[] }) {
+export function LibraryView({
+  documents,
+  canUpdate = false,
+  canDelete = false,
+  onEdit,
+}: {
+  documents: LibraryDocument[];
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  onEdit?: (doc: LibraryDocument) => void;
+}) {
   const t = useTranslations("library");
 
   return (
@@ -82,7 +119,12 @@ export function LibraryView({ documents }: { documents: LibraryDocument[] }) {
 
       {TAB_CATEGORIES.map((category) => (
         <TabsContent key={category} value={category}>
-          <DocumentGrid documents={documents.filter((d) => d.category === category)} />
+          <DocumentGrid
+            documents={documents.filter((d) => d.category === category)}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onEdit={onEdit}
+          />
         </TabsContent>
       ))}
     </Tabs>

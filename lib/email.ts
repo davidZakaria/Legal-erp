@@ -556,23 +556,46 @@ export async function sendTwoFactorOtpEmail({
   return primary;
 }
 
-/** Daily auto-backup attachment email */
+/** Daily auto-backup attachment email (full ZIP: database + system files) */
 export async function sendBackupEmail({
   to,
   bcc,
   fileName,
-  jsonContent,
+  zipContent,
+  preview,
 }: {
   to: string;
   bcc?: string[];
   fileName: string;
-  jsonContent: string;
+  zipContent: Buffer;
+  preview?: {
+    totalFiles: number;
+    databaseTables: number;
+    categories: Array<{ label: string; fileCount: number; sampleFiles: string[] }>;
+  };
 }): Promise<EmailResult> {
-  const subject = "📦 النسخة الاحتياطية الآلية اليومية - NJD ERP";
+  const subject = "📦 النسخة الاحتياطية الآلية اليومية - NJD Legal ERP";
+  const categoryLines = (preview?.categories ?? [])
+    .map(
+      (category) =>
+        `<li><strong>${category.label}</strong>: ${category.fileCount} ملف` +
+        (category.sampleFiles.length
+          ? ` — ${category.sampleFiles.slice(0, 3).join("، ")}`
+          : "") +
+        `</li>`
+    )
+    .join("");
+
   const bodyHtml = `
     <p style="margin: 0 0 16px;">تحية طيبة،</p>
-    <p style="margin: 0 0 16px;">مرفق النسخة الاحتياطية الآلية اليومية للنظام بتاريخ ${new Date().toLocaleDateString("ar-EG")}.</p>
-    <p style="margin: 0; color: #64748b; font-size: 13px;">يرجى حفظ الملف في مكان آمن.</p>
+    <p style="margin: 0 0 16px;">تم إنشاء النسخة الاحتياطية الآلية اليومية للنظام بتاريخ ${new Date().toLocaleDateString("ar-EG")}.</p>
+    <p style="margin: 0 0 8px;"><strong>محتويات الأرشيف:</strong></p>
+    <ul style="margin: 0 0 16px; padding-inline-start: 20px;">
+      <li>قاعدة البيانات: ${preview?.databaseTables ?? "—"} جدول</li>
+      <li>إجمالي الملفات: ${preview?.totalFiles ?? "—"}</li>
+      ${categoryLines}
+    </ul>
+    <p style="margin: 0; color: #64748b; font-size: 13px;">يرجى حفظ الملف المرفق في مكان آمن.</p>
   `;
 
   return sendMailMessage({
@@ -580,7 +603,7 @@ export async function sendBackupEmail({
     bcc,
     subject,
     html: buildEmailTemplate("النسخة الاحتياطية اليومية", bodyHtml, "#1e3a8a"),
-    attachments: [{ filename: fileName, content: jsonContent }],
+    attachments: [{ filename: fileName, content: zipContent }],
   });
 }
 
