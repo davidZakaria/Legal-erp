@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import fs from "fs/promises";
 import path from "path";
-import { Role } from "@prisma/client";
+import { Role, BackupType } from "@prisma/client";
 import { requireAuthenticatedSession } from "@/lib/auth-guards";
 import { logActivity } from "@/lib/auditLogger";
 import { prisma } from "@/lib/prisma";
@@ -86,7 +86,10 @@ export async function generateAdvancedBackup(isEncrypted: boolean) {
   }
 
   try {
-    const result = await runAdvancedBackup(isEncrypted);
+    const result = await runAdvancedBackup({
+      isEncrypted,
+      type: BackupType.MANUAL,
+    });
 
     await logActivity(
       session.user.id,
