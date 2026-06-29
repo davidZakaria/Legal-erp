@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Role } from "@prisma/client";
-import { Pencil, UserX, UserCheck, MoreHorizontal, RotateCcw } from "lucide-react";
+import { Pencil, UserX, UserCheck, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,7 +27,7 @@ import {
   EditUserDialog,
   type AdminUserRow,
 } from "@/components/admin/EditUserDialog";
-import { toggleUserActive, resetUserPassword, toggleUser2FA } from "@/app/actions/admin/users";
+import { toggleUserActive, resetUserPassword, toggleUser2FA, deleteUser } from "@/app/actions/admin/users";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 
@@ -59,6 +59,7 @@ export function UsersAdminPanel({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggling2FAId, setToggling2FAId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleToggleActive = async (user: AdminUserRow) => {
     setTogglingId(user.id);
@@ -97,6 +98,28 @@ export function UsersAdminPanel({
     }
 
     toast.error(result.error ?? t("saveError"));
+  };
+
+  const handleDeleteUser = async (user: AdminUserRow) => {
+    if (!window.confirm(t("deleteUserConfirm", { name: user.name, email: user.email }))) {
+      return;
+    }
+
+    setDeletingId(user.id);
+    const result = await deleteUser(user.id);
+    setDeletingId(null);
+
+    if (result.success) {
+      toast.success(t("deleteUserSuccess"));
+      router.refresh();
+      return;
+    }
+
+    const message =
+      result.error?.includes("assigned cases or records")
+        ? t("deleteUserHasRecords")
+        : result.error ?? t("deleteUserFailed");
+    toast.error(message);
   };
 
   const is2FARequired = (user: AdminUserRow) =>
@@ -172,7 +195,7 @@ export function UsersAdminPanel({
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      {user.id !== currentUserId && (
+                      {user.id !== currentUserId && user.role !== Role.SUPER_ADMIN && (
                         <Button
                           size="icon"
                           variant="ghost"
@@ -187,6 +210,19 @@ export function UsersAdminPanel({
                           ) : (
                             <UserCheck className="h-4 w-4 text-green-600" />
                           )}
+                        </Button>
+                      )}
+                      {canCreateSuperAdmin &&
+                        user.id !== currentUserId &&
+                        user.role !== Role.SUPER_ADMIN && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={deletingId === user.id}
+                          onClick={() => handleDeleteUser(user)}
+                          aria-label={t("deleteUser")}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
                       {canCreateSuperAdmin && user.id !== currentUserId && (

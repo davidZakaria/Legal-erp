@@ -108,7 +108,7 @@ const actionLabels: Record<string, Label> = {
   "ACTIVATE_USER::User": { ar: "تفعيل مستخدم", en: "Activated User" },
   "ENABLE_USER_2FA::User": { ar: "تفعيل المصادقة الثنائية", en: "Enabled 2FA for User" },
   "DISABLE_USER_2FA::User": { ar: "تعطيل المصادقة الثنائية", en: "Disabled 2FA for User" },
-  "RESET_PASSWORD::User": { ar: "إعادة تعيين كلمة المرور", en: "Reset User Password" },
+  "DELETE_USER::User": { ar: "حذف مستخدم", en: "Deleted User" },
   "CHANGE_INITIAL_PASSWORD::User": { ar: "تغيير كلمة المرور الأولية", en: "Changed Initial Password" },
 
   // Backups

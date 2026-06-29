@@ -291,3 +291,80 @@ export async function resetUserPassword(userId: string) {
 
   return { success: true };
 }
+
+async function countUserReferences(userId: string): Promise<number> {
+  const [
+    lawsuits,
+    prosecutions,
+    legalTasks,
+    poas,
+    executions,
+    notices,
+    expenses,
+    documents,
+  ] = await Promise.all([
+    prisma.lawsuit.count({ where: { assignedLawyerId: userId } }),
+    prisma.prosecution.count({ where: { assignedLawyerId: userId } }),
+    prisma.legalTask.count({ where: { assignedLawyerId: userId } }),
+    prisma.powerOfAttorney.count({ where: { assignedLawyerId: userId } }),
+    prisma.executionRequest.count({ where: { assignedLawyerId: userId } }),
+    prisma.legalNotice.count({ where: { assignedLawyerId: userId } }),
+    prisma.expense.count({ where: { requestedById: userId } }),
+    prisma.legalDocument.count({ where: { uploadedById: userId } }),
+  ]);
+
+  return (
+    lawsuits +
+    prosecutions +
+    legalTasks +
+    poas +
+    executions +
+    notices +
+    expenses +
+    documents
+  );
+}
+
+export async function deleteUser(userId: string) {
+  const gate = await requireAuthenticatedSession();
+  if (!gate.success) {
+    return { success: false, error: gate.error };
+  }
+  const session = gate.session;
+  if (session.user.role !== Role.SUPER_ADMIN) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  if (userId === session.user.id) {
+    return { success: false, error: "Cannot delete your own account" };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) {
+    return { success: false, error: "User not found" };
+  }
+
+  if (target.role === Role.SUPER_ADMIN) {
+    return { success: false, error: "Cannot delete a super admin account" };
+  }
+
+  const referenceCount = await countUserReferences(userId);
+  if (referenceCount > 0) {
+    return {
+      success: false,
+      error: "Cannot delete user with assigned cases or records. Deactivate the account instead.",
+    };
+  }
+
+  await logActivity(session.user.id, "DELETE_USER", "User", userId);
+
+  await prisma.$transaction([
+    prisma.auditLog.deleteMany({ where: { userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
+
+  revalidatePath("/ar/admin/users");
+  revalidatePath("/en/admin/users");
+
+  return { success: true };
+}
