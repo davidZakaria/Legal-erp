@@ -1,8 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 
+import { TWO_FACTOR_PASS_SECONDS } from "@/lib/two-factor-config";
+
 const COOKIE_NAME = "njd-2fa-pass";
-const MAX_AGE_SECONDS = 5 * 60;
+const MAX_AGE_SECONDS = TWO_FACTOR_PASS_SECONDS;
 
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET;

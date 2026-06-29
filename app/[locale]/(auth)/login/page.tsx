@@ -12,6 +12,7 @@ import { useRouter } from "@/i18n/navigation";
 import { initiateLogin } from "@/app/actions/auth/login";
 import { completeSignIn } from "@/lib/auth-client";
 import { getTurnstileSiteKey } from "@/lib/turnstile-config";
+import { PENDING_LOGIN_SESSION_MS } from "@/lib/two-factor-config";
 
 const PENDING_LOGIN_KEY = "njd-pending-login";
 const turnstileSiteKey = getTurnstileSiteKey();
@@ -79,7 +80,7 @@ export default function LoginPage() {
           JSON.stringify({
             email: initResult.email,
             pendingLoginToken: initResult.pendingLoginToken,
-            exp: Date.now() + 10 * 60 * 1000,
+            exp: Date.now() + PENDING_LOGIN_SESSION_MS,
             devOtp: initResult.devOtp,
           })
         );

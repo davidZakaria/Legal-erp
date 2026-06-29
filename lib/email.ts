@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { OTP_VALIDITY_MINUTES } from "@/lib/two-factor-config";
 
 type EmailResult = { success: boolean; message: string };
 
@@ -528,7 +529,7 @@ export async function sendTwoFactorOtpEmail({
     <p style="margin: 0 0 16px;">مرحباً <strong>${userName}</strong>،</p>
     <p style="margin: 0 0 16px;">رمز التحقق الخاص بك للدخول إلى النظام هو:</p>
     <p style="margin: 0 0 16px; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #b91c1c; text-align: center;">${otp}</p>
-    <p style="margin: 0 0 16px;">صلاحية الرمز: <strong>10 دقائق</strong>.</p>
+    <p style="margin: 0 0 16px;">صلاحية الرمز: <strong>${OTP_VALIDITY_MINUTES} دقائق</strong>.</p>
     <p style="margin: 0; color: #64748b; font-size: 13px;">إذا لم تطلب هذا الرمز، يرجى تجاهل الرسالة والتواصل مع الإدارة فوراً.</p>
   `;
 

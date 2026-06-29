@@ -64,6 +64,7 @@
     "twoFactorTitle": "Sign-in confirmation",
     "twoFactorDescription": "Enter the 6-digit code sent to your email",
     "twoFactorEmailSentTo": "Code sent to",
+    "twoFactorValidityHint": "The code is valid for {minutes} minutes. Check spam if you don't see it.",
     "otpLabel": "Confirmation code",
     "otpPlaceholder": "• • • • • •",
     "otpInvalid": "Invalid or expired code",

@@ -64,6 +64,7 @@
     "twoFactorTitle": "تأكيد الدخول",
     "twoFactorDescription": "أدخل الرمز المكوّن من 6 أرقام المرسل إلى بريدك الإلكتروني",
     "twoFactorEmailSentTo": "تم إرسال الرمز إلى",
+    "twoFactorValidityHint": "صلاحية الرمز {minutes} دقائق. تحقق من مجلد البريد المزعج إن لم تجده.",
     "otpLabel": "رمز التأكيد",
     "otpPlaceholder": "• • • • • •",
     "otpInvalid": "الرمز غير صحيح أو انتهت صلاحيته",

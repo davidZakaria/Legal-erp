@@ -14,10 +14,12 @@ import {
 } from "@/lib/two-factor-cookie";
 import { createPendingLoginToken, consumePendingLoginToken, peekPendingLoginToken } from "@/lib/pending-login";
 
-const OTP_TTL_MS = 10 * 60 * 1000;
-const MAX_OTP_ATTEMPTS = 5;
-const OTP_LOCK_MS = 15 * 60 * 1000;
-const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+import {
+  OTP_VALIDITY_MS,
+  OTP_RESEND_COOLDOWN_MS,
+  OTP_MAX_ATTEMPTS,
+  OTP_LOCKOUT_MS,
+} from "@/lib/two-factor-config";
 
 async function issueAndEmailOtp(user: {
   id: string;
@@ -27,7 +29,7 @@ async function issueAndEmailOtp(user: {
 }): Promise<{ success: true; otp: string } | { success: false; error: string }> {
   const otp = String(randomInt(100000, 999999));
   const otpHash = await bcrypt.hash(otp, 10);
-  const otpExpiry = new Date(Date.now() + OTP_TTL_MS);
+  const otpExpiry = new Date(Date.now() + OTP_VALIDITY_MS);
 
   await prisma.user.update({
     where: { id: user.id },
@@ -198,7 +200,7 @@ export async function resendOTP(
   }
 
   if (user.otpExpiry) {
-    const sentAt = user.otpExpiry.getTime() - OTP_TTL_MS;
+    const sentAt = user.otpExpiry.getTime() - OTP_VALIDITY_MS;
     const elapsed = Date.now() - sentAt;
     if (elapsed < OTP_RESEND_COOLDOWN_MS) {
       return {
@@ -260,7 +262,7 @@ export async function verifyOTP(
   if (!otpValid) {
     const attempts = user.otpAttempts + 1;
     const lockUntil =
-      attempts >= MAX_OTP_ATTEMPTS ? new Date(Date.now() + OTP_LOCK_MS) : null;
+      attempts >= OTP_MAX_ATTEMPTS ? new Date(Date.now() + OTP_LOCKOUT_MS) : null;
     await prisma.user.update({
       where: { id: user.id },
       data: {

@@ -12,9 +12,13 @@ import { useRouter, Link } from "@/i18n/navigation";
 import { resolvePendingLoginCredentials, verifyOTP, resendOTP } from "@/app/actions/auth/login";
 import { completeSignIn } from "@/lib/auth-client";
 import { toast } from "sonner";
+import {
+  OTP_RESEND_COOLDOWN_SECONDS,
+  OTP_VALIDITY_MINUTES,
+  PENDING_LOGIN_SESSION_MS,
+} from "@/lib/two-factor-config";
 
 const PENDING_LOGIN_KEY = "njd-pending-login";
-const RESEND_COOLDOWN_SECONDS = 60;
 
 type PendingLogin = {
   email: string;
@@ -63,7 +67,7 @@ function TwoFactorForm() {
       if (pending.pendingLoginToken) {
         setPendingLoginToken(pending.pendingLoginToken);
       }
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
     } catch {
       /* ignore */
     }
@@ -164,7 +168,7 @@ function TwoFactorForm() {
         } else if (result.error === "Too many attempts. Try again later.") {
           setError(t("otpTooManyAttempts"));
         } else if (result.error === "Please wait before requesting a new code.") {
-          setError(t("resendOtpWait", { seconds: result.retryAfterSeconds ?? RESEND_COOLDOWN_SECONDS }));
+          setError(t("resendOtpWait", { seconds: result.retryAfterSeconds ?? OTP_RESEND_COOLDOWN_SECONDS }));
         } else {
           setError(result.error ?? t("resendOtpFailed"));
         }
@@ -172,7 +176,7 @@ function TwoFactorForm() {
       }
 
       setCode("");
-      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       if (result.devOtp) {
         setDevOtp(result.devOtp);
         sessionStorage.setItem(
@@ -180,13 +184,13 @@ function TwoFactorForm() {
           JSON.stringify({
             ...pending,
             devOtp: result.devOtp,
-            exp: Date.now() + 10 * 60 * 1000,
+            exp: Date.now() + PENDING_LOGIN_SESSION_MS,
           })
         );
       } else {
         sessionStorage.setItem(
           PENDING_LOGIN_KEY,
-          JSON.stringify({ ...pending, exp: Date.now() + 10 * 60 * 1000 })
+          JSON.stringify({ ...pending, exp: Date.now() + PENDING_LOGIN_SESSION_MS })
         );
       }
       toast.success(t("resendOtpSuccess"));
@@ -217,6 +221,9 @@ function TwoFactorForm() {
                 </span>
               </p>
             )}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t("twoFactorValidityHint", { minutes: OTP_VALIDITY_MINUTES })}
+            </p>
           </div>
         </CardHeader>
         <CardContent>

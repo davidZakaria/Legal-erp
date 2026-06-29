@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-const PENDING_LOGIN_TTL_MS = 10 * 60 * 1000;
+import { PENDING_LOGIN_SESSION_MS } from "@/lib/two-factor-config";
+
+const PENDING_LOGIN_TTL_MS = PENDING_LOGIN_SESSION_MS;
 
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET;
