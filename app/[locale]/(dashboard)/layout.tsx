@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { Providers } from "@/components/providers";
 import { getAllLookups } from "@/lib/lookups";
+import { getInAppNotifications } from "@/lib/notifications/in-app-notifications";
 
 export default async function DashboardLayout({
   children,
@@ -26,7 +27,7 @@ export default async function DashboardLayout({
     redirect(`/${locale}/setup-password`);
   }
 
-  const [lawyers, lawsuits, lookups] = await Promise.all([
+  const [lawyers, lawsuits, lookups, notifications] = await Promise.all([
     prisma.user.findMany({
       where: { role: Role.LAWYER, isActive: true },
       select: { id: true, name: true },
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
       take: 100,
     }),
     getAllLookups(),
+    getInAppNotifications(user.id, user.role),
   ]);
 
   const lawsuitOptions = lawsuits.map((l) => ({
@@ -58,6 +60,7 @@ export default async function DashboardLayout({
             lawsuits={lawsuitOptions}
             courtLookups={lookups.courts}
             expertOfficeLookups={lookups.expertOffices}
+            notifications={notifications}
           />
           <main className="flex-1 overflow-auto bg-muted/40 p-6 md:p-8">
             {children}

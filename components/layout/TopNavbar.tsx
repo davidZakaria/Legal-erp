@@ -7,7 +7,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "./SignOutButton";
 import { GlobalSearch } from "./GlobalSearch";
 import { QuickAddMenu } from "./QuickAddMenu";
+import { NotificationBell } from "./NotificationBell";
 import { BroadcastDialog } from "./BroadcastDialog";
+import type { InAppNotification } from "@/lib/notifications/in-app-notifications";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Building2 } from "lucide-react";
@@ -28,6 +30,7 @@ export function TopNavbar({
   lawsuits,
   courtLookups,
   expertOfficeLookups,
+  notifications,
 }: {
   userName: string;
   userRole: Role;
@@ -36,6 +39,7 @@ export function TopNavbar({
   lawsuits: LawsuitOption[];
   courtLookups: LookupOption[];
   expertOfficeLookups: LookupOption[];
+  notifications: InAppNotification[];
 }) {
   const t = useTranslations("common");
   const initials = userName
@@ -65,6 +69,7 @@ export function TopNavbar({
 
       <div className="flex shrink-0 items-center gap-2 md:gap-3">
         <BroadcastDialog userRole={userRole} />
+        <NotificationBell notifications={notifications} />
         <QuickAddMenu
           userRole={userRole}
           lawyers={lawyers}

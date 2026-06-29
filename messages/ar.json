@@ -439,6 +439,17 @@
     "assignTask": "تكليف بمهمة",
     "newExecution": "طلب تنفيذ"
   },
+  "notifications": {
+    "title": "الإشعارات",
+    "empty": "لا توجد عناصر عاجلة حالياً",
+    "count": "{count, plural, one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
+    "viewDashboard": "عرض جدول الأعمال",
+    "type_session": "جلسة محكمة",
+    "type_legalTask": "مهمة قانونية",
+    "type_gafiTask": "مهمة مؤسسية",
+    "type_notice": "إخطار قانوني",
+    "type_expense": "مصروف بانتظار الموافقة"
+  },
   "legalTasks": {
     "addTask": "تكليف بمهمة",
     "createTitle": "تكليف بمهمة إدارية",

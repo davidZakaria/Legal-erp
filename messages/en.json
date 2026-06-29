@@ -440,6 +440,17 @@
     "assignTask": "Assign Task",
     "newExecution": "Execution Request"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No urgent items right now",
+    "count": "{count, plural, one {# item} other {# items}}",
+    "viewDashboard": "View dashboard agenda",
+    "type_session": "Court session",
+    "type_legalTask": "Legal task",
+    "type_gafiTask": "Corporate task",
+    "type_notice": "Legal notice",
+    "type_expense": "Pending expense"
+  },
   "legalTasks": {
     "addTask": "Assign Task",
     "createTitle": "Assign Administrative Task",

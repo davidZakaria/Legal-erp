@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Role } from "@prisma/client";
 import {
-  Bell,
   Building2,
   CheckCircle,
   Plus,
@@ -60,11 +59,6 @@ export function QuickAddMenu({
 
   return (
     <>
-      <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground" aria-label={t("notifications")}>
-        <Bell className="h-5 w-5" />
-        <span className="absolute end-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-      </Button>
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="rounded-full bg-blue-900 hover:bg-blue-800">
