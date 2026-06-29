@@ -26,16 +26,14 @@ export default async function SetupPasswordPage({
 
   if (!user) {
     redirect({ href: "/login", locale });
-  }
-
-  if (!user.requiresPasswordChange) {
+  } else if (!user.requiresPasswordChange) {
     redirect({ href: "/", locale });
+  } else {
+    return (
+      <SetupPasswordForm
+        primaryEmail={user.email}
+        hasSecondaryEmail={Boolean(user.secondaryEmail?.trim())}
+      />
+    );
   }
-
-  return (
-    <SetupPasswordForm
-      primaryEmail={user.email}
-      hasSecondaryEmail={Boolean(user.secondaryEmail?.trim())}
-    />
-  );
 }
