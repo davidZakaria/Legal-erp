@@ -19,6 +19,7 @@ import {
 } from "@/lib/two-factor-cookie";
 import { createPendingLoginToken, consumePendingLoginToken, peekPendingLoginToken } from "@/lib/pending-login";
 import { hasValidTrustedDeviceCookie, setTrustedDeviceCookie } from "@/lib/two-factor-trust";
+import { createPreAuthToken } from "@/lib/pre-auth-token";
 
 import {
   OTP_VALIDITY_MS,
@@ -190,7 +191,8 @@ export async function finalizeLogin(
   email: string,
   password: string,
   turnstilePass?: string,
-  twoFactorPass?: string
+  twoFactorPass?: string,
+  preAuthToken?: string
 ): Promise<FinalizeLoginResult> {
   const trimmedEmail = email.trim().toLowerCase();
 
@@ -200,6 +202,7 @@ export async function finalizeLogin(
       password,
       turnstilePass: turnstilePass ?? "",
       twoFactorPass: twoFactorPass ?? "",
+      preAuthToken: preAuthToken ?? "",
       redirect: false,
     });
 
@@ -273,11 +276,21 @@ export async function loginWithCredentials(
     return initResult;
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true },
+  });
+  const preAuthToken = dbUser ? createPreAuthToken(dbUser.id, email) : null;
+  if (!preAuthToken) {
+    return { success: false, error: "Server auth misconfigured", resetTurnstile: true };
+  }
+
   const finalResult = await finalizeLogin(
     email,
     password,
     initResult.turnstilePass,
-    initResult.twoFactorPass
+    initResult.twoFactorPass,
+    preAuthToken
   );
 
   if (!finalResult.success) {
