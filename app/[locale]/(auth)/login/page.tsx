@@ -75,7 +75,7 @@ export default function LoginPage() {
       const signInResult = await completeSignIn({
         email: trimmedEmail,
         password,
-        turnstileToken,
+        turnstilePass: initResult.turnstilePass,
         router,
       });
 
@@ -136,9 +136,13 @@ export default function LoginPage() {
               <div className="flex justify-center">
                 <Turnstile
                   siteKey={turnstileSiteKey}
+                  options={{ refreshExpired: "auto" }}
                   onSuccess={(token) => setTurnstileToken(token)}
                   onExpire={() => setTurnstileToken(null)}
-                  onError={() => setTurnstileToken(null)}
+                  onError={() => {
+                    setTurnstileToken(null);
+                    setError(t("turnstileRequired"));
+                  }}
                 />
               </div>
             )}

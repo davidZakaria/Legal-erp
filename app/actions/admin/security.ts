@@ -27,16 +27,17 @@ export async function getSecurityPageData() {
   }
 
   const siteKey = getTurnstileSiteKey();
-  const hasProductionKeys = Boolean(
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() &&
-      process.env.TURNSTILE_SECRET_KEY?.trim()
-  );
+  const hasSiteKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim());
+  const hasSecretKey = Boolean(process.env.TURNSTILE_SECRET_KEY?.trim());
+  const hasProductionKeys = hasSiteKey && hasSecretKey;
+  const keysMismatch = hasSiteKey !== hasSecretKey;
   const isDevelopment = process.env.NODE_ENV === "development";
 
   return {
     turnstile: {
       isConfigured: isTurnstileConfigured(),
       hasProductionKeys,
+      keysMismatch,
       isUsingDevKeys: isDevelopment && !hasProductionKeys,
       siteKeyPreview: siteKey ? maskKey(siteKey) : null,
     },

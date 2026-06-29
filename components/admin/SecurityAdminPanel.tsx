@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 type TurnstileStatus = {
   isConfigured: boolean;
   hasProductionKeys: boolean;
+  keysMismatch: boolean;
   isUsingDevKeys: boolean;
   siteKeyPreview: string | null;
 };
@@ -54,6 +55,12 @@ export function SecurityAdminPanel({ turnstile }: { turnstile: TurnstileStatus }
             </div>
             {statusBadge}
           </div>
+
+          {turnstile.keysMismatch && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              {t("turnstileKeysMismatch")}
+            </div>
+          )}
 
           {turnstile.siteKeyPreview && (
             <div className="rounded-lg border bg-muted/80 p-4">
