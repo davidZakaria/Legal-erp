@@ -69,7 +69,10 @@ export async function initiateLogin(
     return { success: false, error: "Server auth misconfigured", resetTurnstile: true };
   }
 
-  const failAfterTurnstile = async (error: string, resetTurnstile = false) => {
+  const failAfterTurnstile = async (
+    error: string,
+    resetTurnstile = false
+  ): Promise<Extract<InitiateLoginResult, { success: false }>> => {
     await clearTurnstilePassCookie();
     return { success: false, error, resetTurnstile };
   };
