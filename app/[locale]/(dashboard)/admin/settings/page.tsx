@@ -6,6 +6,9 @@ import { getAllLookups } from "@/lib/lookups";
 import { Settings } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SettingsClient } from "@/components/settings/SettingsClient";
+import { ClearOperationalDataCard } from "@/components/admin/ClearOperationalDataCard";
+import { getOperationalDataCounts } from "@/lib/clear-operational-data";
+import { Role } from "@prisma/client";
 
 export default async function AdminSettingsPage() {
   const t = await getTranslations("admin");
@@ -21,6 +24,10 @@ export default async function AdminSettingsPage() {
   }
 
   const { courts, policeStations, expertOffices, projects } = await getAllLookups();
+  const operationalCounts =
+    session!.user.role === Role.SUPER_ADMIN
+      ? await getOperationalDataCounts()
+      : null;
 
   return (
     <div dir="rtl" className="text-right">
@@ -36,6 +43,10 @@ export default async function AdminSettingsPage() {
         expertOffices={expertOffices}
         projects={projects}
       />
+
+      {operationalCounts && (
+        <ClearOperationalDataCard counts={operationalCounts} />
+      )}
     </div>
   );
 }

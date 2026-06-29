@@ -44,23 +44,7 @@ async function seedFiles() {
   await ensurePdf(path.resolve("./public/uploads/expenses/receipt-filing-fees.pdf"));
 }
 
-async function clearTransactionalData() {
-  await prisma.auditLog.deleteMany({});
-  await prisma.expense.deleteMany({});
-  await prisma.legalDocument.deleteMany({});
-  await prisma.lawsuitAttachment.deleteMany({});
-  await prisma.executionRequest.deleteMany({});
-  await prisma.legalNotice.deleteMany({});
-  await prisma.courtSession.deleteMany({});
-  await prisma.lawsuit.deleteMany({});
-  await prisma.prosecution.deleteMany({});
-  await prisma.legalTask.deleteMany({});
-  await prisma.powerOfAttorney.deleteMany({});
-  await prisma.contract.deleteMany({});
-  await prisma.gAFITask.deleteMany({});
-  await prisma.assemblyArchive.deleteMany({});
-  await prisma.subsidiaryCompany.deleteMany({});
-}
+import { clearOperationalData } from "@/lib/clear-operational-data";
 
 async function clearAllUsers() {
   await prisma.user.deleteMany({});
@@ -121,7 +105,7 @@ async function main() {
 
   await seedFiles();
   await seedLookups();
-  await clearTransactionalData();
+  await clearOperationalData();
   await clearAllUsers();
 
   const david = await prisma.user.upsert({
