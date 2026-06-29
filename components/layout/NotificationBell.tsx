@@ -15,7 +15,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -61,14 +60,14 @@ export function NotificationBell({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
-        <DropdownMenuLabel className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm font-semibold">
           <span>{t("title")}</span>
           {notifications.length > 0 && (
             <span className="text-xs font-normal text-muted-foreground">
               {t("count", { count: notifications.length })}
             </span>
           )}
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-muted-foreground">
