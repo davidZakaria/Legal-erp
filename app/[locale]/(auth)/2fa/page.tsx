@@ -9,10 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter, Link } from "@/i18n/navigation";
-import { resolvePendingLoginCredentials, verifyOTP } from "@/app/actions/auth/login";
+import { resolvePendingLoginCredentials, verifyOTP, resendOTP } from "@/app/actions/auth/login";
 import { completeSignIn } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const PENDING_LOGIN_KEY = "njd-pending-login";
+const RESEND_COOLDOWN_SECONDS = 60;
 
 type PendingLogin = {
   email: string;
@@ -37,8 +39,18 @@ function TwoFactorForm() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [pendingLoginToken, setPendingLoginToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendCooldown((seconds) => (seconds <= 1 ? 0 : seconds - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem(PENDING_LOGIN_KEY);
@@ -51,6 +63,7 @@ function TwoFactorForm() {
       if (pending.pendingLoginToken) {
         setPendingLoginToken(pending.pendingLoginToken);
       }
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } catch {
       /* ignore */
     }
@@ -115,6 +128,75 @@ function TwoFactorForm() {
     }
   };
 
+  const handleResend = async () => {
+    setError(null);
+
+    if (!email || !pendingLoginToken || resendCooldown > 0) {
+      return;
+    }
+
+    const raw = sessionStorage.getItem(PENDING_LOGIN_KEY);
+    if (!raw) {
+      setError(t("otpSessionExpired"));
+      return;
+    }
+
+    const pending = JSON.parse(raw) as PendingLogin;
+    if (
+      pending.exp < Date.now() ||
+      pending.email.toLowerCase() !== email ||
+      pending.pendingLoginToken !== pendingLoginToken
+    ) {
+      sessionStorage.removeItem(PENDING_LOGIN_KEY);
+      setError(t("otpSessionExpired"));
+      return;
+    }
+
+    setResending(true);
+    try {
+      const result = await resendOTP(email, pendingLoginToken);
+      if (!result.success) {
+        if (result.retryAfterSeconds) {
+          setResendCooldown(result.retryAfterSeconds);
+        }
+        if (result.error === "Login session expired. Please sign in again.") {
+          setError(t("otpSessionExpired"));
+        } else if (result.error === "Too many attempts. Try again later.") {
+          setError(t("otpTooManyAttempts"));
+        } else if (result.error === "Please wait before requesting a new code.") {
+          setError(t("resendOtpWait", { seconds: result.retryAfterSeconds ?? RESEND_COOLDOWN_SECONDS }));
+        } else {
+          setError(result.error ?? t("resendOtpFailed"));
+        }
+        return;
+      }
+
+      setCode("");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      if (result.devOtp) {
+        setDevOtp(result.devOtp);
+        sessionStorage.setItem(
+          PENDING_LOGIN_KEY,
+          JSON.stringify({
+            ...pending,
+            devOtp: result.devOtp,
+            exp: Date.now() + 10 * 60 * 1000,
+          })
+        );
+      } else {
+        sessionStorage.setItem(
+          PENDING_LOGIN_KEY,
+          JSON.stringify({ ...pending, exp: Date.now() + 10 * 60 * 1000 })
+        );
+      }
+      toast.success(t("resendOtpSuccess"));
+    } catch {
+      setError(t("resendOtpFailed"));
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md border-border shadow-lg">
@@ -175,6 +257,19 @@ function TwoFactorForm() {
               disabled={loading || code.length !== 6 || !pendingLoginToken}
             >
               {loading ? tCommon("loading") : t("verifyOtpButton")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full"
+              disabled={resending || resendCooldown > 0 || !pendingLoginToken || loading}
+              onClick={handleResend}
+            >
+              {resending
+                ? t("resendOtpSending")
+                : resendCooldown > 0
+                  ? t("resendOtpWait", { seconds: resendCooldown })
+                  : t("resendOtp")}
             </Button>
             <Button type="button" variant="link" className="w-full text-muted-foreground" asChild>
               <Link href="/login">{t("backToLogin")}</Link>

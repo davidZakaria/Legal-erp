@@ -17,6 +17,53 @@ import { createPendingLoginToken, consumePendingLoginToken, peekPendingLoginToke
 const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 5;
 const OTP_LOCK_MS = 15 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+
+async function issueAndEmailOtp(user: {
+  id: string;
+  email: string;
+  name: string;
+  secondaryEmail: string | null;
+}): Promise<{ success: true; otp: string } | { success: false; error: string }> {
+  const otp = String(randomInt(100000, 999999));
+  const otpHash = await bcrypt.hash(otp, 10);
+  const otpExpiry = new Date(Date.now() + OTP_TTL_MS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      otpCode: otpHash,
+      otpExpiry,
+      otpAttempts: 0,
+      otpLockedUntil: null,
+    },
+  });
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[dev 2FA] OTP for ${user.email}: ${otp}`);
+  }
+
+  const emailResult = await sendTwoFactorOtpEmail({
+    to: user.email,
+    secondaryEmail: user.secondaryEmail,
+    otp,
+    userName: user.name,
+  });
+
+  if (!emailResult.success) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { otpCode: null, otpExpiry: null },
+    });
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[dev 2FA] Email delivery failed — use the OTP printed above.");
+      return { success: true, otp };
+    }
+    return { success: false, error: emailResult.message };
+  }
+
+  return { success: true, otp };
+}
 
 export type InitiateLoginResult =
   | { success: true; requires2FA: false }
@@ -85,54 +132,9 @@ export async function initiateLogin(
     return failAfterTurnstile("Too many attempts. Try again later.", true);
   }
 
-  const otp = String(randomInt(100000, 999999));
-  const otpHash = await bcrypt.hash(otp, 10);
-  const otpExpiry = new Date(Date.now() + OTP_TTL_MS);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      otpCode: otpHash,
-      otpExpiry,
-      otpAttempts: 0,
-      otpLockedUntil: null,
-    },
-  });
-
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[dev 2FA] OTP for ${user.email}: ${otp}`);
-  }
-
-  const emailResult = await sendTwoFactorOtpEmail({
-    to: user.email,
-    secondaryEmail: user.secondaryEmail,
-    otp,
-    userName: user.name,
-  });
-
-  if (!emailResult.success) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { otpCode: null, otpExpiry: null },
-    });
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[dev 2FA] Email delivery failed — use the OTP printed above.");
-      const pendingLoginToken = createPendingLoginToken(trimmedEmail, password);
-      if (!pendingLoginToken) {
-        return failAfterTurnstile(
-          "Server auth is misconfigured (AUTH_SECRET). Restart the dev server after updating .env.",
-          true
-        );
-      }
-      return {
-        success: true,
-        requires2FA: true,
-        email: user.email,
-        pendingLoginToken,
-        devOtp: otp,
-      };
-    }
-    return failAfterTurnstile(emailResult.message, true);
+  const otpResult = await issueAndEmailOtp(user);
+  if (!otpResult.success) {
+    return failAfterTurnstile(otpResult.error, true);
   }
 
   const pendingLoginToken = createPendingLoginToken(trimmedEmail, password);
@@ -148,7 +150,73 @@ export async function initiateLogin(
     requires2FA: true,
     email: user.email,
     pendingLoginToken,
-    ...(process.env.NODE_ENV === "development" ? { devOtp: otp } : {}),
+    ...(process.env.NODE_ENV === "development" ? { devOtp: otpResult.otp } : {}),
+  };
+}
+
+export async function resendOTP(
+  email: string,
+  pendingLoginToken: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  devOtp?: string;
+  retryAfterSeconds?: number;
+}> {
+  const trimmedEmail = email.trim().toLowerCase();
+
+  if (!trimmedEmail || !pendingLoginToken) {
+    return { success: false, error: "Login session expired. Please sign in again." };
+  }
+
+  const pending = peekPendingLoginToken(pendingLoginToken);
+  if (!pending || pending.email !== trimmedEmail) {
+    return { success: false, error: "Login session expired. Please sign in again." };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: trimmedEmail },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      secondaryEmail: true,
+      isActive: true,
+      role: true,
+      isTwoFactorEnabled: true,
+      otpExpiry: true,
+      otpLockedUntil: true,
+    },
+  });
+
+  if (!user || !user.isActive || !userRequiresTwoFactor(user)) {
+    return { success: false, error: "Login session expired. Please sign in again." };
+  }
+
+  if (user.otpLockedUntil && user.otpLockedUntil > new Date()) {
+    return { success: false, error: "Too many attempts. Try again later." };
+  }
+
+  if (user.otpExpiry) {
+    const sentAt = user.otpExpiry.getTime() - OTP_TTL_MS;
+    const elapsed = Date.now() - sentAt;
+    if (elapsed < OTP_RESEND_COOLDOWN_MS) {
+      return {
+        success: false,
+        error: "Please wait before requesting a new code.",
+        retryAfterSeconds: Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000),
+      };
+    }
+  }
+
+  const otpResult = await issueAndEmailOtp(user);
+  if (!otpResult.success) {
+    return { success: false, error: otpResult.error };
+  }
+
+  return {
+    success: true,
+    ...(process.env.NODE_ENV === "development" ? { devOtp: otpResult.otp } : {}),
   };
 }
 
